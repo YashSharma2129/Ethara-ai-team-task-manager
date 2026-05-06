@@ -10,8 +10,13 @@ import {
   MessageSquare,
   ChevronRight,
   Target,
-  User,
   History,
+  CheckCircle2,
+  AlertCircle,
+  Zap,
+  User2,
+  MoreHorizontal,
+  ExternalLink,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -27,25 +32,68 @@ import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-const PRIORITY_THEMES: Record<string, { cls: string; icon: any }> = {
-  URGENT: { cls: "bg-danger/10 text-danger border-danger/20", icon: Flag },
-  HIGH: { cls: "bg-warning/10 text-warning border-warning/20", icon: Flag },
-  MEDIUM: { cls: "bg-primary/10 text-primary border-primary/20", icon: Flag },
-  LOW: { cls: "bg-success/10 text-success border-success/20", icon: Flag },
+const PRIORITY_CONFIG: Record<string, { cls: string; dot: string; label: string }> = {
+  URGENT: { cls: "bg-danger/10 text-danger border-danger/30", dot: "bg-danger", label: "Urgent" },
+  HIGH:   { cls: "bg-warning/10 text-warning border-warning/30", dot: "bg-warning", label: "High" },
+  MEDIUM: { cls: "bg-primary/10 text-primary border-primary/30", dot: "bg-primary", label: "Medium" },
+  LOW:    { cls: "bg-success/10 text-success border-success/30", dot: "bg-success", label: "Low" },
 };
 
-const STATUS_THEMES: Record<string, { cls: string; label: string }> = {
-  DONE: { cls: "bg-success text-white", label: "Completed" },
-  IN_PROGRESS: { cls: "bg-primary text-white", label: "In Progress" },
-  TODO: { cls: "bg-[#f1f3f5] text-[#6c757d]", label: "To Do" },
+const STATUS_CONFIG: Record<string, { cls: string; icon: any; label: string; ring: string }> = {
+  DONE:        { cls: "bg-success text-white", icon: CheckCircle2, label: "Completed", ring: "ring-success/20" },
+  IN_PROGRESS: { cls: "bg-primary text-white", icon: Clock,        label: "In Progress", ring: "ring-primary/20" },
+  TODO:        { cls: "bg-[#f1f3f5] text-[#6c757d]", icon: AlertCircle, label: "To Do", ring: "ring-[#dee2e6]" },
 };
 
-function fmt(d: string) {
-  return new Date(d).toLocaleDateString(undefined, {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+function fmt(d: string | Date, style: "long" | "short" = "long") {
+  return new Date(d).toLocaleDateString(undefined,
+    style === "long"
+      ? { month: "long", day: "numeric", year: "numeric" }
+      : { month: "short", day: "numeric" }
+  );
+}
+
+function initials(name = "") {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+function isOverdue(dueDate: string, status: string) {
+  return status !== "DONE" && new Date(dueDate) < new Date();
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+function TaskSkeleton() {
+  return (
+    <AppShell>
+      <div className="mx-auto max-w-[1100px] px-4 py-8">
+        <Skeleton className="mb-8 h-8 w-28 rounded-xl" />
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
+          <div className="space-y-4">
+            <Skeleton className="h-72 rounded-3xl" />
+            <Skeleton className="h-48 rounded-3xl" />
+          </div>
+          <Skeleton className="h-96 rounded-3xl" />
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
+// ─── Property Row ─────────────────────────────────────────────────────────────
+
+function PropRow({ icon: Icon, label, children }: { icon: any; label: string; children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-3 py-3.5 border-b border-[#f1f3f5] last:border-0">
+      <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#f8f9fa] text-[#adb5bd]">
+        <Icon size={13} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] font-extrabold uppercase tracking-widest text-[#adb5bd] mb-0.5">{label}</p>
+        <div className="text-[13px] font-bold text-[#343a40]">{children}</div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
@@ -56,11 +104,11 @@ export default function TaskDetailsPage() {
   const id = params.id as string;
   const { isAdmin, user } = useAuth();
   const deleteMutation = useDeleteTask();
+  const updateMutation = useUpdateTask();
+  const queryClient = useQueryClient();
 
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const queryClient = useQueryClient();
-  const updateMutation = useUpdateTask();
 
   const { data: task, isLoading } = useQuery({
     queryKey: ["task", id],
@@ -77,202 +125,281 @@ export default function TaskDetailsPage() {
         toast.success("Task deleted");
         router.push("/tasks");
       },
-      onError: (e: any) => {
-        toast.error(e.response?.data?.message ?? "Delete failed");
-      },
+      onError: (e: any) => toast.error(e.response?.data?.message ?? "Delete failed"),
     });
   }
 
-  if (isLoading) {
-    return (
-      <AppShell>
-        <div className="mx-auto max-w-[1100px] px-4 py-8">
-          <Skeleton className="mb-6 h-6 w-24 rounded-lg" />
-          <div className="flex flex-col gap-8 lg:flex-row">
-            <div className="flex-1 space-y-6">
-              <Skeleton className="h-96 w-full rounded-2xl" />
-            </div>
-            <div className="w-full lg:w-80">
-              <Skeleton className="h-80 w-full rounded-2xl" />
-            </div>
-          </div>
-        </div>
-      </AppShell>
-    );
-  }
+  if (isLoading) return <TaskSkeleton />;
 
-  const pTheme = PRIORITY_THEMES[task?.priority] || PRIORITY_THEMES.MEDIUM;
-  const sTheme = STATUS_THEMES[task?.status] || STATUS_THEMES.TODO;
+  const pCfg = PRIORITY_CONFIG[task?.priority] ?? PRIORITY_CONFIG.MEDIUM;
+  const sCfg = STATUS_CONFIG[task?.status] ?? STATUS_CONFIG.TODO;
+  const StatusIcon = sCfg.icon;
+  const overdue = task?.dueDate && isOverdue(task.dueDate, task.status);
+  const canManage = isAdmin || task?.project?.adminId === user?.id;
 
   return (
     <AppShell>
       <div className="mx-auto max-w-[1100px] px-4 py-8">
-        {/* Navigation */}
-        <div className="mb-6 flex items-center justify-between">
+
+        {/* ── Top Nav ── */}
+        <div className="mb-7 flex items-center justify-between">
           <button
             onClick={() => router.back()}
             className="group flex items-center gap-2 text-sm font-bold text-[#adb5bd] transition-colors hover:text-primary"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] shadow-sm transition-transform group-hover:-translate-x-1">
-              <ArrowLeft size={16} />
-            </div>
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#eff2f7] bg-white shadow-sm transition-transform group-hover:-translate-x-0.5">
+              <ArrowLeft size={15} />
+            </span>
             Back
           </button>
-
-          <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">
-            <span className="hover:text-[#343a40] cursor-default transition-colors">Tasks</span>
-            <ChevronRight size={12} />
+          <nav className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">
+            <span className="cursor-pointer hover:text-[#343a40] transition-colors" onClick={() => router.push("/tasks")}>Tasks</span>
+            <ChevronRight size={11} />
             <span className="text-[#343a40]">Details</span>
-          </div>
+          </nav>
         </div>
 
-        <div className="flex flex-col gap-8 lg:flex-row">
+        {/* ── Overdue Banner ── */}
+        {overdue && (
+          <div className="mb-5 flex items-center gap-3 rounded-2xl border border-danger/20 bg-danger/5 px-4 py-3">
+            <AlertCircle size={15} className="shrink-0 text-danger" />
+            <p className="text-[13px] font-bold text-danger">
+              This task is <span className="font-extrabold">overdue</span> — was due {fmt(task.dueDate, "short")}
+            </p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_290px]">
+
           {/* ── Left Column ── */}
-          <div className="flex-1 space-y-6">
-            <div className="rounded-3xl border border-[#eff2f7] bg-white p-8 shadow-sm">
-              {/* Header Info */}
-              <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className={`inline-flex items-center gap-1.5 rounded-xl border px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wider ${pTheme.cls}`}>
-                    <pTheme.icon size={13} />
-                    {task.priority} Priority
+          <div className="space-y-5">
+
+            {/* Main Card */}
+            <div className="rounded-3xl border border-[#eff2f7] bg-white shadow-sm overflow-hidden">
+
+              {/* Color accent top strip based on priority */}
+              <div className={`h-1 w-full ${
+                task.priority === "URGENT" ? "bg-danger" :
+                task.priority === "HIGH"   ? "bg-warning" :
+                task.priority === "MEDIUM" ? "bg-primary" : "bg-success"
+              }`} />
+
+              <div className="p-7">
+                {/* Badges row */}
+                <div className="mb-5 flex flex-wrap items-center gap-2">
+                  <span className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ${pCfg.cls}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${pCfg.dot}`} />
+                    {pCfg.label} Priority
                   </span>
-                  <span className={`inline-flex items-center rounded-xl px-3.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wider ${sTheme.cls}`}>
-                    {sTheme.label}
+                  <span className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider ring-2 ${sCfg.cls} ${sCfg.ring}`}>
+                    <StatusIcon size={11} />
+                    {sCfg.label}
+                  </span>
+                  <span className="ml-auto text-[10px] font-bold text-[#adb5bd] font-mono">
+                    #{task.id.slice(0, 8).toUpperCase()}
                   </span>
                 </div>
-                <div className="text-[11px] font-bold uppercase tracking-widest text-[#adb5bd]">
-                  Ref: <span className="text-[#343a40]">{task.id.slice(0, 8)}</span>
-                </div>
+
+                {/* Title */}
+                <h1 className="mb-3 text-[28px] font-extrabold leading-tight tracking-tight text-[#343a40]">
+                  {task.title}
+                </h1>
+
+                {/* Description */}
+                <p className="text-[14px] leading-relaxed text-[#6c757d]">
+                  {task.description || (
+                    <span className="italic text-[#adb5bd]">No description provided for this task.</span>
+                  )}
+                </p>
+
+                {/* Action buttons */}
+                {canManage && (
+                  <div className="mt-6 flex items-center gap-3 pt-5 border-t border-[#f1f3f5]">
+                    <button
+                      onClick={() => setIsDrawerOpen(true)}
+                      className="flex items-center gap-2 rounded-xl border border-[#eff2f7] bg-white px-4 py-2.5 text-[13px] font-bold text-[#343a40] shadow-sm transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary active:scale-[0.98]"
+                    >
+                      <Edit size={14} />
+                      Edit Task
+                    </button>
+                    <button
+                      onClick={() => setIsConfirmOpen(true)}
+                      className="flex items-center gap-2 rounded-xl border border-danger/20 bg-danger/5 px-4 py-2.5 text-[13px] font-bold text-danger transition-all hover:bg-danger hover:text-white active:scale-[0.98]"
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
+            </div>
 
-              {/* Title & Desc */}
-              <h1 className="mb-4 text-3xl font-extrabold tracking-tight text-[#343a40]">
-                {task.title}
-              </h1>
-              <p className="mb-10 text-[15px] leading-relaxed text-[#6c757d]">
-                {task.description || "No description provided."}
-              </p>
+            {/* Activity Timeline */}
+            <div className="rounded-3xl border border-[#eff2f7] bg-white p-7 shadow-sm">
+              <h3 className="mb-6 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-widest text-[#343a40]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <History size={12} />
+                </div>
+                Activity Timeline
+              </h3>
 
-              {/* Sub-sections */}
-              <div className="space-y-10">
-                {/* Activity */}
-                <div className="pt-8 border-t border-[#f1f3f5]">
-                  <div className="mb-6 flex items-center justify-between">
-                    <h3 className="flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-[#343a40]">
-                      <History size={16} className="text-primary" />
-                      Activity Timeline
-                    </h3>
-                  </div>
-                  <div className="space-y-6">
-                    {[
-                      { type: "CREATED", label: "Task was created", date: task.createdAt, user: "System" },
-                      task.assignedTo && { type: "ASSIGNED", label: `Assigned to ${task.assignedTo.name}`, date: task.createdAt, user: "Admin" },
-                    ].filter(Boolean).map((act: any, i) => (
-                      <div key={i} className="relative flex gap-4">
-                        {i !== 1 && (
-                          <div className="absolute left-[7px] top-6 h-10 w-0.5 bg-[#f1f3f5]" />
-                        )}
-                        <div className="z-10 mt-1 h-4 w-4 shrink-0 rounded-full border-2 border-white bg-primary shadow-sm" />
-                        <div>
-                          <p className="text-[13px] font-bold text-[#343a40]">{act.label}</p>
-                          <p className="mt-1 text-[11px] font-semibold text-[#adb5bd]">
-                            {fmt(act.date)} • {act.user}
-                          </p>
-                        </div>
+              <div className="relative space-y-0">
+                {[
+                  {
+                    label: "Task created",
+                    sub: `Created on ${fmt(task.createdAt, "short")}`,
+                    icon: Zap,
+                    color: "bg-primary",
+                  },
+                  task.assignedTo && {
+                    label: `Assigned to ${task.assignedTo.name}`,
+                    sub: "Team member notified",
+                    icon: User2,
+                    color: "bg-info",
+                  },
+                  task.status === "IN_PROGRESS" && {
+                    label: "Moved to In Progress",
+                    sub: `Updated ${fmt(task.updatedAt, "short")}`,
+                    icon: Clock,
+                    color: "bg-warning",
+                  },
+                  task.status === "DONE" && {
+                    label: "Task completed ✓",
+                    sub: `Completed on ${fmt(task.updatedAt, "short")}`,
+                    icon: CheckCircle2,
+                    color: "bg-success",
+                  },
+                ]
+                  .filter(Boolean)
+                  .map((event: any, i, arr) => (
+                    <div key={i} className="relative flex gap-4 pb-6 last:pb-0">
+                      {i < arr.length - 1 && (
+                        <div className="absolute left-[11px] top-7 h-full w-0.5 bg-[#f1f3f5]" />
+                      )}
+                      <div className={`z-10 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${event.color} text-white shadow-sm`}>
+                        <event.icon size={11} />
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Comments Placeholder */}
-                <div className="pt-8 border-t border-[#f1f3f5]">
-                  <h3 className="mb-6 flex items-center gap-2 text-sm font-extrabold uppercase tracking-wider text-[#343a40]">
-                    <MessageSquare size={16} className="text-primary" />
-                    Discussion
-                  </h3>
-                  <div className="flex flex-col items-center justify-center rounded-2xl bg-[#f8f9fa] py-12 text-center">
-                    <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#adb5bd] shadow-sm">
-                      <MessageSquare size={20} />
+                      <div className="pt-0.5">
+                        <p className="text-[13px] font-bold text-[#343a40]">{event.label}</p>
+                        <p className="mt-0.5 text-[11px] font-semibold text-[#adb5bd]">{event.sub}</p>
+                      </div>
                     </div>
-                    <p className="text-[13px] font-bold text-[#343a40]">No comments yet</p>
-                    <p className="mt-1 text-[11px] text-[#adb5bd]">Collaborate with your team members here.</p>
-                  </div>
+                  ))}
+              </div>
+            </div>
+
+            {/* Discussion */}
+            <div className="rounded-3xl border border-[#eff2f7] bg-white p-7 shadow-sm">
+              <h3 className="mb-5 flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-widest text-[#343a40]">
+                <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <MessageSquare size={12} />
                 </div>
+                Discussion
+              </h3>
+              <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[#eff2f7] py-10 text-center">
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#f8f9fa] text-[#ced4da]">
+                  <MessageSquare size={18} />
+                </div>
+                <p className="text-[13px] font-bold text-[#6c757d]">No comments yet</p>
+                <p className="mt-1 text-[11px] text-[#adb5bd]">Collaboration coming soon.</p>
               </div>
             </div>
           </div>
 
-          {/* ── Sidebar ── */}
-          <div className="w-full space-y-6 lg:w-80">
-            {/* Meta Info */}
-            <div className="rounded-3xl border border-[#eff2f7] bg-white p-6 shadow-sm">
-              <h4 className="mb-6 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">
-                Properties
-              </h4>
-              
-              <div className="space-y-6">
-                <div className="flex items-start gap-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f1f3f5] text-[#6c757d]">
-                    <Target size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#adb5bd]">Project</p>
-                    <p 
-                      onClick={() => router.push(`/projects/${task.project?.id}`)}
-                      className="mt-0.5 cursor-pointer text-[13px] font-extrabold text-primary hover:underline"
-                    >
-                      {task.project?.name || "—"}
-                    </p>
-                  </div>
-                </div>
+          {/* ── Right Sidebar ── */}
+          <div className="space-y-5">
 
-                <div className="flex items-start gap-4">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#f1f3f5] text-[#6c757d]">
-                    <Calendar size={18} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#adb5bd]">Due Date</p>
-                    <p className="mt-0.5 text-[13px] font-extrabold text-[#343a40]">
-                      {task.dueDate ? fmt(task.dueDate) : "No deadline"}
-                    </p>
-                  </div>
-                </div>
+            {/* Properties */}
+            <div className="rounded-3xl border border-[#eff2f7] bg-white p-5 shadow-sm">
+              <p className="mb-1 text-[10px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Properties</p>
 
-                <div className="flex items-start gap-4 pt-4 border-t border-[#f1f3f5]">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[14px] font-extrabold text-primary">
-                    {task.assignedTo?.name?.charAt(0) || "U"}
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-[#adb5bd]">Assignee</p>
-                    <p className="mt-0.5 text-[13px] font-extrabold text-[#343a40]">
-                      {task.assignedTo?.name || "Unassigned"}
-                    </p>
-                    <p className="text-[11px] font-semibold text-[#adb5bd]">Team Member</p>
-                  </div>
-                </div>
-              </div>
+              <PropRow icon={Target} label="Project">
+                {task.project ? (
+                  <button
+                    onClick={() => router.push(`/projects/${task.project.id}`)}
+                    className="flex items-center gap-1.5 font-extrabold text-primary hover:underline"
+                  >
+                    {task.project.name}
+                    <ExternalLink size={11} />
+                  </button>
+                ) : (
+                  <span className="text-[#adb5bd]">—</span>
+                )}
+              </PropRow>
+
+              <PropRow icon={Calendar} label="Due Date">
+                {task.dueDate ? (
+                  <span className={overdue ? "text-danger font-extrabold" : ""}>
+                    {fmt(task.dueDate)}
+                    {overdue && <span className="ml-1.5 text-[10px] bg-danger/10 text-danger px-1.5 py-0.5 rounded-md font-extrabold">Overdue</span>}
+                  </span>
+                ) : (
+                  <span className="text-[#adb5bd]">No deadline</span>
+                )}
+              </PropRow>
+
+              <PropRow icon={Flag} label="Priority">
+                <span className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-0.5 text-[11px] font-extrabold ${pCfg.cls}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${pCfg.dot}`} />
+                  {pCfg.label}
+                </span>
+              </PropRow>
+
+              <PropRow icon={Clock} label="Created">
+                {fmt(task.createdAt, "short")}
+              </PropRow>
             </div>
 
-            {/* Actions */}
-            {(isAdmin || task.project?.adminId === user?.id) && (
-              <div className="flex gap-3">
-                <button 
-                  onClick={() => setIsDrawerOpen(true)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#eff2f7] bg-white py-3.5 text-sm font-bold text-[#343a40] shadow-sm transition-all hover:bg-[#f8f9fa] active:scale-95"
-                >
-                  <Edit size={16} />
-                  Edit
-                </button>
-                <button 
-                  onClick={() => setIsConfirmOpen(true)}
-                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-danger/5 py-3.5 text-sm font-bold text-danger transition-all hover:bg-danger hover:text-white active:scale-95"
-                >
-                  <Trash2 size={16} />
-                  Delete
-                </button>
+            {/* Assignee Card */}
+            <div className="rounded-3xl border border-[#eff2f7] bg-white p-5 shadow-sm">
+              <p className="mb-4 text-[10px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Assignee</p>
+              {task.assignedTo ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-[13px] font-extrabold text-primary">
+                    {initials(task.assignedTo.name)}
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-extrabold text-[#343a40]">{task.assignedTo.name}</p>
+                    <p className="text-[11px] text-[#adb5bd]">{task.assignedTo.email}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 border-dashed border-[#dee2e6] text-[#ced4da]">
+                    <User2 size={18} />
+                  </div>
+                  <p className="text-[13px] font-bold text-[#adb5bd]">Unassigned</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Status Widget */}
+            <div className="rounded-3xl border border-[#eff2f7] bg-white p-5 shadow-sm">
+              <p className="mb-3 text-[10px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Status</p>
+              <div className="flex flex-col gap-2">
+                {(["TODO", "IN_PROGRESS", "DONE"] as const).map((s) => {
+                  const cfg = STATUS_CONFIG[s];
+                  const Icon = cfg.icon;
+                  const isActive = task.status === s;
+                  return (
+                    <div
+                      key={s}
+                      className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-[12px] font-bold transition-all ${
+                        isActive
+                          ? `${cfg.cls} ring-2 ${cfg.ring}`
+                          : "bg-[#f8f9fa] text-[#adb5bd]"
+                      }`}
+                    >
+                      <Icon size={13} />
+                      {cfg.label}
+                      {isActive && (
+                        <span className="ml-auto text-[9px] font-extrabold uppercase tracking-widest opacity-70">Current</span>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-            )}
+            </div>
           </div>
         </div>
 
@@ -290,7 +417,6 @@ export default function TaskDetailsPage() {
           formKeyPrefix="task-details"
         />
 
-        {/* Delete Confirm */}
         <ConfirmModal
           isOpen={isConfirmOpen}
           onClose={() => setIsConfirmOpen(false)}
