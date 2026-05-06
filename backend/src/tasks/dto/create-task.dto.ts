@@ -1,8 +1,8 @@
-import { Priority } from '@prisma/client';
-import { Transform } from 'class-transformer';
+import { Priority, TaskStatus } from '@prisma/client';
+import { Transform, Type } from 'class-transformer';
 import {
+  IsDate,
   IsEnum,
-  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -30,11 +30,15 @@ export class CreateTaskDto {
   @IsOptional()
   priority?: Priority;
 
-  @IsISO8601()
+  @IsEnum(TaskStatus)
+  @IsOptional()
+  status?: TaskStatus;
+
   @IsOptional()
   @Transform(({ value }: { value: string | null | undefined }) =>
-    value ? new Date(value) : value,
+    value && value.trim() !== '' ? new Date(value) : null,
   )
+  @IsDate()
   dueDate?: Date;
 
   @IsUUID()

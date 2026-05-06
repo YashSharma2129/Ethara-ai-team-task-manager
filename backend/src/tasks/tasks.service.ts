@@ -60,6 +60,7 @@ export class TasksService {
         title: dto.title,
         description: dto.description,
         priority: dto.priority,
+        status: dto.status,
         dueDate: dto.dueDate,
         projectId: dto.projectId,
         createdById,
@@ -121,7 +122,10 @@ export class TasksService {
         skip,
         take: limit,
         orderBy: { [sortField]: order || 'desc' },
-        include: { assignedTo: ASSIGNEE_SELECT },
+        include: { 
+          assignedTo: ASSIGNEE_SELECT,
+          project: { select: { id: true, adminId: true } }
+        },
       }),
       this.prisma.task.count({ where }),
     ]);

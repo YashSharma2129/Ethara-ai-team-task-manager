@@ -9,23 +9,39 @@ import {
   useContext,
   type ReactNode,
   type FormEvent,
-} from 'react';
-import { X, Loader2, CheckCircle2 } from 'lucide-react';
+} from "react";
+import { X, Loader2, CheckCircle2, ChevronDown } from "lucide-react";
 
-function CustomToggle({ isChecked, onChange, isDisabled }: { isChecked: boolean, onChange: () => void, isDisabled?: boolean }) {
+// ─── Toggle ───────────────────────────────────────────────────────────────────
+
+function Toggle({
+  checked,
+  onChange,
+  disabled,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  disabled?: boolean;
+}) {
   return (
     <button
       type="button"
       onClick={onChange}
-      disabled={isDisabled}
-      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${isChecked ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'} ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      disabled={disabled}
+      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+        checked ? "bg-primary" : "bg-[#dee2e6]"
+      }`}
     >
       <span
-        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ${isChecked ? 'translate-x-5' : 'translate-x-1'}`}
+        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-sm transition-transform duration-200 ${
+          checked ? "translate-x-5" : "translate-x-0.5"
+        }`}
       />
     </button>
   );
 }
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 interface DrawerFormCtx {
   values: Record<string, any>;
@@ -41,13 +57,14 @@ const DrawerFormContext = createContext<DrawerFormCtx>({
 
 export function useDrawerField(name: string, defaultValue?: any) {
   const ctx = useContext(DrawerFormContext);
-  const value = ctx.values[name] !== undefined ? ctx.values[name] : (defaultValue ?? '');
+  const value =
+    ctx.values[name] !== undefined ? ctx.values[name] : (defaultValue ?? "");
 
   useEffect(() => {
     if (ctx.values[name] === undefined && defaultValue !== undefined) {
       ctx.setValue(name, defaultValue);
     }
-  }, [name, defaultValue, ctx]);
+  }, [name, defaultValue]);
 
   return {
     value,
@@ -55,6 +72,16 @@ export function useDrawerField(name: string, defaultValue?: any) {
     readOnly: ctx.readOnly,
   };
 }
+
+// ─── Shared style tokens ──────────────────────────────────────────────────────
+
+const labelCls =
+  "block text-[11px] font-bold uppercase tracking-wider text-[#6c757d] mb-1.5";
+
+const inputCls =
+  "w-full rounded-xl border border-[#e9ebec] bg-[#f8f9fa] px-4 py-2.5 text-sm font-medium text-[#343a40] placeholder:text-[#adb5bd] outline-none transition-all focus:border-primary/40 focus:bg-white focus:ring-2 focus:ring-primary/8";
+
+// ─── SideDrawer ───────────────────────────────────────────────────────────────
 
 export interface SideDrawerProps {
   formKey: string;
@@ -68,6 +95,7 @@ export interface SideDrawerProps {
   width?: number | string;
   footerExtra?: ReactNode;
   readOnly?: boolean;
+  onValuesChange?: (name: string, value: any) => void;
   children: ReactNode;
 }
 
@@ -78,165 +106,176 @@ export function SideDrawer({
   isOpen,
   onClose,
   onSubmit,
-  submitLabel = 'Save',
+  onValuesChange,
+  submitLabel = "Save",
   submitDanger = false,
-  width = 520,
+  width = 500,
   footerExtra,
   readOnly = false,
   children,
 }: SideDrawerProps) {
   const [values, setValues] = useState<Record<string, any>>({});
-  const [submitState, setSubmitState] = useState<'idle' | 'loading' | 'success'>('idle');
+  const [submitState, setSubmitState] = useState<"idle" | "loading" | "success">("idle");
   const [error, setError] = useState<string | null>(null);
-  const [prevFormKey, setPrevFormKey] = useState(formKey);
-  const panelRef = useRef<HTMLDivElement>(null);
+  const [prevKey, setPrevKey] = useState(formKey);
 
-  if (formKey !== prevFormKey) {
+  // Reset when formKey changes (switching between create / edit)
+  if (formKey !== prevKey) {
     setValues({});
     setError(null);
-    setSubmitState('idle');
-    setPrevFormKey(formKey);
+    setSubmitState("idle");
+    setPrevKey(formKey);
   }
 
+  // Escape key
   useEffect(() => {
     if (!isOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const handler = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
   }, [isOpen, onClose]);
 
+  // Lock body scroll
   useEffect(() => {
-    document.body.style.overflow = isOpen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
+    document.body.style.overflow = isOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
   }, [isOpen]);
 
-  const setValue = useCallback((name: string, value: any) => {
-    setValues(prev => ({ ...prev, [name]: value }));
-  }, []);
+  const setValue = useCallback(
+    (name: string, value: any) => {
+      setValues((p) => ({ ...p, [name]: value }));
+      onValuesChange?.(name, value);
+    },
+    [onValuesChange]
+  );
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (readOnly || !onSubmit) return;
-    
     setError(null);
-    setSubmitState('loading');
-    
+    setSubmitState("loading");
     try {
       await onSubmit(values);
-      setSubmitState('success');
+      setSubmitState("success");
       setTimeout(() => {
-        setSubmitState('idle');
+        setSubmitState("idle");
         onClose();
-      }, 600);
+      }, 700);
     } catch (err: any) {
-      setSubmitState('idle');
-      setError(err?.message || 'Something went wrong. Please try again.');
+      setSubmitState("idle");
+      setError(err?.response?.data?.message ?? err?.message ?? "Something went wrong.");
     }
   }
 
-  const panelWidth = typeof width === 'number' ? `${width}px` : width;
+  const panelWidth = typeof width === "number" ? `${width}px` : width;
 
   return (
     <>
+      {/* Backdrop */}
       <div
         onClick={onClose}
-        className={`fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-[1000] transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        className={`fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[2px] transition-opacity duration-300 ${
+          isOpen ? "opacity-100" : "pointer-events-none opacity-0"
+        }`}
       />
 
+      {/* Panel */}
       <div
-        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed top-0 right-0 bottom-0 flex flex-col bg-white shadow-2xl border-l border-slate-200 z-[1001] transition-transform duration-500 ease-[cubic-bezier(.4,0,.2,1)]"
+        className="fixed bottom-0 right-0 top-0 z-[1001] flex flex-col border-l border-[#e9ebec] bg-white shadow-2xl transition-transform duration-300 ease-[cubic-bezier(.4,0,.2,1)]"
         style={{
           width: panelWidth,
-          maxWidth: '100vw',
-          transform: isOpen ? 'translateX(0)' : `translateX(100%)`,
+          maxWidth: "100vw",
+          transform: isOpen ? "translateX(0)" : "translateX(100%)",
         }}
       >
-        <div className="flex items-start justify-between px-6 py-5 border-b border-slate-100 bg-white flex-shrink-0">
-          <div>
+        {/* Header */}
+        <div className="flex flex-shrink-0 items-center justify-between border-b border-[#f1f3f5] px-6 py-4">
+          <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-extrabold text-[#343a40] m-0 leading-tight tracking-tight">
+              <h2 className="truncate text-[15px] font-extrabold text-[#343a40]">
                 {title}
               </h2>
               {readOnly && (
-                <span className="px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-500">
-                  View Only
+                <span className="rounded-md bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#6c757d]">
+                  Read Only
                 </span>
               )}
             </div>
             {subtitle && (
-              <p className="text-sm text-[#6c757d] mt-1 font-medium">
-                {subtitle}
-              </p>
+              <p className="mt-0.5 truncate text-[12px] text-[#6c757d]">{subtitle}</p>
             )}
           </div>
           <button
             onClick={onClose}
-            aria-label="Close panel"
-            className="w-10 h-10 rounded-xl flex items-center justify-center ml-3 flex-shrink-0 border border-[#e9ebec] bg-white text-[#adb5bd] hover:bg-[#f8f8fb] hover:text-[#343a40] transition-all"
+            className="ml-4 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-[#e9ebec] text-[#adb5bd] transition-all hover:bg-[#f8f9fa] hover:text-[#343a40]"
           >
-            <X size={20} />
+            <X size={16} />
           </button>
         </div>
 
+        {/* Body */}
         <form
           id="side-drawer-form"
           onSubmit={handleSubmit}
-          className="flex-1 overflow-y-auto flex flex-col bg-white"
+          className="flex flex-1 flex-col overflow-hidden"
         >
           <DrawerFormContext.Provider value={{ values, setValue, readOnly }}>
-            <div className="px-8 py-8 flex flex-col gap-8 flex-1">
+            <div className="flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-6">
               {children}
 
               {error && (
-                <div className="p-4 rounded-xl bg-red-50 border border-red-100 text-red-600 text-xs font-bold animate-in fade-in slide-in-from-top-2">
+                <div className="rounded-xl border border-danger/20 bg-danger/5 px-4 py-3 text-[12px] font-semibold text-danger animate-in slide-in-from-top-1 duration-200">
                   {error}
                 </div>
               )}
             </div>
           </DrawerFormContext.Provider>
 
-          <div className="px-8 py-6 border-t border-slate-100 bg-white flex-shrink-0 flex items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              {footerExtra}
-            </div>
-            <div className="flex items-center gap-4">
+          {/* Footer */}
+          <div className="flex flex-shrink-0 items-center justify-between border-t border-[#f1f3f5] px-6 py-4">
+            <div>{footerExtra}</div>
+            <div className="flex items-center gap-3">
               {!readOnly ? (
                 <>
                   <button
                     type="button"
                     onClick={onClose}
-                    disabled={submitState !== 'idle'}
-                    className="px-6 py-3 rounded-xl text-sm font-bold text-[#6c757d] hover:bg-[#f8f8fb] hover:text-[#343a40] transition-all disabled:opacity-50"
+                    disabled={submitState !== "idle"}
+                    className="rounded-xl px-4 py-2 text-sm font-bold text-[#6c757d] transition-all hover:bg-[#f8f9fa] hover:text-[#343a40] disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     form="side-drawer-form"
-                    disabled={submitState !== 'idle'}
-                    className={`px-8 py-3 rounded-xl text-sm font-bold flex items-center gap-2 shadow-xl transition-all
-                      ${submitState === 'success' 
-                        ? 'bg-emerald-600 text-white shadow-emerald-600/20' 
-                        : submitDanger 
-                          ? 'bg-red-600 text-white shadow-red-600/20 disabled:opacity-50' 
-                          : 'bg-primary text-white shadow-primary/30 disabled:opacity-50 hover:bg-primary/90 hover:scale-[1.02]'}`}
+                    disabled={submitState !== "idle"}
+                    className={`flex min-w-[110px] items-center justify-center gap-2 rounded-xl px-5 py-2 text-sm font-bold text-white shadow-md transition-all disabled:opacity-60 ${
+                      submitState === "success"
+                        ? "bg-success shadow-success/20"
+                        : submitDanger
+                        ? "bg-danger shadow-danger/20 hover:bg-danger/90"
+                        : "bg-primary shadow-primary/20 hover:bg-primary/90 active:scale-95"
+                    }`}
                   >
-                    {submitState === 'loading' && <Loader2 size={18} className="animate-spin" />}
-                    {submitState === 'success' && <CheckCircle2 size={18} />}
-                    {submitState === 'loading' ? 'Saving…' : submitState === 'success' ? 'Saved!' : submitLabel}
+                    {submitState === "loading" && (
+                      <Loader2 size={15} className="animate-spin" />
+                    )}
+                    {submitState === "success" && <CheckCircle2 size={15} />}
+                    {submitState === "loading"
+                      ? "Saving…"
+                      : submitState === "success"
+                      ? "Saved!"
+                      : submitLabel}
                   </button>
                 </>
               ) : (
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-8 py-3 rounded-xl text-sm font-bold border border-[#e9ebec] bg-white text-[#343a40] hover:bg-[#f8f8fb] transition-all"
+                  className="rounded-xl border border-[#e9ebec] px-5 py-2 text-sm font-bold text-[#343a40] transition-all hover:bg-[#f8f9fa]"
                 >
                   Close
                 </button>
@@ -249,117 +288,199 @@ export function SideDrawer({
   );
 }
 
-const labelClasses = "block text-xs font-extrabold uppercase tracking-widest text-[#6c757d] mb-2";
-const inputClasses = "w-full px-4 py-3 rounded-xl text-sm font-bold border border-[#e9ebec] bg-[#f8f8fb] text-[#343a40] placeholder:text-[#adb5bd] focus:outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all";
+// ─── Field components ─────────────────────────────────────────────────────────
 
 export function DrawerInput({
-  name, label, placeholder, isRequired = false, type = 'text', defaultValue,
+  name,
+  label,
+  placeholder,
+  isRequired = false,
+  type = "text",
+  defaultValue,
 }: {
-  name: string; label: string; placeholder?: string; isRequired?: boolean;
-  type?: string; defaultValue?: string;
+  name: string;
+  label: string;
+  placeholder?: string;
+  isRequired?: boolean;
+  type?: string;
+  defaultValue?: string;
 }) {
   const { value, onChange, readOnly } = useDrawerField(name, defaultValue);
-
-  if (readOnly) {
-    return <DrawerViewField label={label} value={value} />;
-  }
+  if (readOnly) return <DrawerViewField label={label} value={value} />;
 
   return (
     <div>
-      <label className={labelClasses}>
+      <label className={labelCls}>
         {label}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
+        {isRequired && <span className="ml-0.5 text-danger">*</span>}
       </label>
       <input
         type={type}
         value={value}
         required={isRequired}
         placeholder={placeholder}
-        onChange={e => onChange(e.target.value)}
-        className={inputClasses}
+        onChange={(e) => onChange(e.target.value)}
+        className={inputCls}
       />
     </div>
   );
 }
 
 export function DrawerTextarea({
-  name, label, placeholder, rows = 4, defaultValue,
+  name,
+  label,
+  placeholder,
+  rows = 4,
+  defaultValue,
 }: {
-  name: string; label: string; placeholder?: string; rows?: number; defaultValue?: string;
+  name: string;
+  label: string;
+  placeholder?: string;
+  rows?: number;
+  defaultValue?: string;
 }) {
   const { value, onChange, readOnly } = useDrawerField(name, defaultValue);
-
-  if (readOnly) {
-    return <DrawerViewField label={label} value={value} />;
-  }
+  if (readOnly) return <DrawerViewField label={label} value={value} />;
 
   return (
     <div>
-      <label className={labelClasses}>
-        {label}
-      </label>
+      <label className={labelCls}>{label}</label>
       <textarea
         rows={rows}
         value={value}
         placeholder={placeholder}
-        onChange={e => onChange(e.target.value)}
-        className={`${inputClasses} resize-y leading-relaxed`}
+        onChange={(e) => onChange(e.target.value)}
+        className={`${inputCls} resize-y leading-relaxed`}
       />
     </div>
   );
 }
 
 export function DrawerSelect({
-  name, label, options, isRequired = false, defaultValue,
+  name,
+  label,
+  options,
+  isRequired = false,
+  defaultValue,
+  placeholder = "Select…",
 }: {
-  name: string; label: string;
+  name: string;
+  label: string;
   options: { label: string; value: string }[];
-  isRequired?: boolean; defaultValue?: string;
+  isRequired?: boolean;
+  defaultValue?: string;
+  placeholder?: string;
 }) {
   const { value, onChange, readOnly } = useDrawerField(name, defaultValue);
 
   if (readOnly) {
-    const selectedLabel = options.find(o => o.value === value)?.label || value;
-    return <DrawerViewField label={label} value={selectedLabel} />;
+    const selected = options.find((o) => o.value === value)?.label ?? value;
+    return <DrawerViewField label={label} value={selected} />;
   }
 
   return (
     <div>
-      <label className={labelClasses}>
+      <label className={labelCls}>
         {label}
-        {isRequired && <span className="text-red-500 ml-1">*</span>}
+        {isRequired && <span className="ml-0.5 text-danger">*</span>}
       </label>
-      <select
-        value={value}
-        required={isRequired}
-        onChange={e => onChange(e.target.value)}
-        className={`${inputClasses} cursor-pointer appearance-auto`}
-      >
-        <option value="">Select…</option>
-        {options.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
+      <div className="relative">
+        <select
+          value={value}
+          required={isRequired}
+          onChange={(e) => onChange(e.target.value)}
+          className={`${inputCls} cursor-pointer appearance-none pr-9`}
+        >
+          <option value="">{placeholder}</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          size={14}
+          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#adb5bd]"
+        />
+      </div>
+    </div>
+  );
+}
+
+export function DrawerToggle({
+  name,
+  label,
+  description,
+  defaultValue = true,
+}: {
+  name: string;
+  label: string;
+  description?: string;
+  defaultValue?: boolean;
+}) {
+  const { value, onChange, readOnly } = useDrawerField(name, defaultValue);
+
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-[#e9ebec] bg-[#f8f9fa] px-4 py-3.5">
+      <div className="mr-4 flex-1">
+        <p className="text-[13px] font-bold text-[#343a40]">{label}</p>
+        {description && (
+          <p className="mt-0.5 text-[11px] text-[#6c757d]">{description}</p>
+        )}
+      </div>
+      <Toggle
+        checked={!!value}
+        onChange={() => !readOnly && onChange(!value)}
+        disabled={readOnly}
+      />
+    </div>
+  );
+}
+
+export function DrawerDivider({ label }: { label?: string }) {
+  if (!label) return <div className="h-px bg-[#f1f3f5]" />;
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-[#f1f3f5]" />
+      <span className="text-[10px] font-bold uppercase tracking-widest text-[#adb5bd]">
+        {label}
+      </span>
+      <div className="h-px flex-1 bg-[#f1f3f5]" />
+    </div>
+  );
+}
+
+export function DrawerViewField({
+  label,
+  value,
+}: {
+  label: string;
+  value?: any;
+}) {
+  return (
+    <div>
+      <p className={labelCls}>{label}</p>
+      <div className="flex min-h-[42px] items-center rounded-xl border border-[#e9ebec] bg-[#f8f9fa] px-4 py-2.5 text-sm font-medium text-[#343a40]">
+        {value || (
+          <span className="italic text-[#adb5bd]">Not provided</span>
+        )}
+      </div>
     </div>
   );
 }
 
 export function DrawerImageUpload({
-  name, label, defaultValue,
+  name,
+  label,
+  defaultValue,
 }: {
-  name: string; label: string; defaultValue?: string;
+  name: string;
+  label: string;
+  defaultValue?: string;
 }) {
   const { onChange, readOnly } = useDrawerField(name);
   const fileRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (defaultValue) setPreview(defaultValue);
-  }, [defaultValue]);
-
-  if (readOnly) {
-    return <DrawerImageView label={label} src={preview || undefined} />;
-  }
+  const [preview, setPreview] = useState<string | null>(defaultValue ?? null);
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -371,14 +492,27 @@ export function DrawerImageUpload({
   function remove() {
     onChange(null);
     setPreview(null);
-    if (fileRef.current) fileRef.current.value = '';
+    if (fileRef.current) fileRef.current.value = "";
+  }
+
+  if (readOnly) {
+    return (
+      <div>
+        <p className={labelCls}>{label}</p>
+        {preview ? (
+          <img src={preview} className="h-40 w-full rounded-xl object-cover border border-[#e9ebec]" />
+        ) : (
+          <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-[#e9ebec] bg-[#f8f9fa] text-[12px] text-[#adb5bd]">
+            No image
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
     <div>
-      <label className={labelClasses}>
-        {label}
-      </label>
+      <label className={labelCls}>{label}</label>
       <input
         type="file"
         accept="image/*"
@@ -386,22 +520,21 @@ export function DrawerImageUpload({
         onChange={handleFile}
         className="hidden"
       />
-
       {preview ? (
-        <div className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 group">
-          <img src={preview} alt="preview" className="w-full h-48 object-cover" />
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+        <div className="group relative overflow-hidden rounded-xl border border-[#e9ebec]">
+          <img src={preview} className="h-40 w-full object-cover" />
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="px-4 py-2 rounded-xl text-sm font-bold bg-white text-slate-900 hover:bg-slate-100"
+              className="rounded-lg bg-white px-3 py-1.5 text-[12px] font-bold text-[#343a40] hover:bg-[#f8f9fa]"
             >
               Change
             </button>
             <button
               type="button"
               onClick={remove}
-              className="px-4 py-2 rounded-xl text-sm font-bold bg-red-600 text-white hover:bg-red-700"
+              className="rounded-lg bg-danger px-3 py-1.5 text-[12px] font-bold text-white"
             >
               Remove
             </button>
@@ -410,79 +543,33 @@ export function DrawerImageUpload({
       ) : (
         <div
           onClick={() => fileRef.current?.click()}
-          className="w-full py-10 rounded-2xl border-2 border-dashed text-center cursor-pointer border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/5 hover:border-primary dark:hover:border-primary hover:bg-primary/5 transition-all"
+          className="flex h-36 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dee2e6] bg-[#f8f9fa] transition-all hover:border-primary/40 hover:bg-primary/5"
         >
-          <p className="text-sm font-bold text-primary mb-1">Click to upload image</p>
-          <p className="text-[10px] font-bold text-slate-500 dark:text-white/30 uppercase tracking-widest">JPG, PNG or WEBP (max. 2MB)</p>
+          <p className="text-[13px] font-bold text-primary">Click to upload</p>
+          <p className="mt-1 text-[11px] text-[#adb5bd]">JPG, PNG or WEBP · max 2 MB</p>
         </div>
       )}
     </div>
   );
 }
 
-export function DrawerDivider({ label }: { label?: string }) {
-  if (!label) {
-    return <div className="h-px bg-slate-200 dark:border-white/10 my-4" />;
-  }
-  return (
-    <div className="flex items-center gap-3 my-2">
-      <div className="flex-1 h-px bg-slate-200 dark:border-white/10" />
-      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-white/20 whitespace-nowrap">
-        {label}
-      </span>
-      <div className="flex-1 h-px bg-slate-200 dark:border-white/10" />
-    </div>
-  );
-}
-
-export function DrawerViewField({ label, value }: { label: string; value?: any }) {
+export function DrawerImageView({
+  label,
+  src,
+}: {
+  label: string;
+  src?: string;
+}) {
   return (
     <div>
-      <p className={labelClasses}>
-        {label}
-      </p>
-      <div className="text-sm text-[#343a40] font-bold leading-relaxed min-h-[48px] px-4 py-3 rounded-xl bg-[#f8f8fb] border border-[#e9ebec] flex items-center">
-        {value || <span className="text-[#adb5bd] italic font-medium">No data available</span>}
-      </div>
-    </div>
-  );
-}
-
-export function DrawerImageView({ label, src }: { label: string; src?: string }) {
-  return (
-    <div>
-      <p className={labelClasses}>
-        {label}
-      </p>
+      <p className={labelCls}>{label}</p>
       {src ? (
-        <img src={src} className="w-full h-48 object-cover rounded-2xl border border-[#e9ebec] shadow-sm" />
+        <img src={src} className="h-40 w-full rounded-xl object-cover border border-[#e9ebec]" />
       ) : (
-        <div className="w-full h-48 rounded-2xl bg-[#f8f8fb] flex items-center justify-center text-[#adb5bd] border border-dashed border-[#e9ebec] font-bold text-sm">
+        <div className="flex h-40 items-center justify-center rounded-xl border border-dashed border-[#e9ebec] bg-[#f8f9fa] text-[12px] text-[#adb5bd]">
           No image provided
         </div>
       )}
-    </div>
-  );
-}
-
-export function DrawerToggle({
-  name, label, description, defaultValue = true,
-}: {
-  name: string; label: string; description?: string; defaultValue?: boolean;
-}) {
-  const { value, onChange, readOnly } = useDrawerField(name, defaultValue);
-
-  return (
-    <div className={`flex items-center justify-between p-6 bg-[#f8f8fb] rounded-2xl border border-[#e9ebec] ${readOnly ? 'opacity-80' : ''}`}>
-      <div className="flex-1 mr-6">
-        <div className="text-sm font-bold text-[#343a40] leading-tight">{label}</div>
-        {description && <div className="text-[11px] font-medium text-[#6c757d] mt-1.5">{description}</div>}
-      </div>
-      <CustomToggle 
-        isChecked={!!value} 
-        onChange={() => !readOnly && onChange(!value)} 
-        isDisabled={readOnly}
-      />
     </div>
   );
 }

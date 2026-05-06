@@ -4,6 +4,7 @@ import {
   Delete,
   Get,
   Param,
+  Patch,
   Post,
   Query,
   UseGuards,
@@ -14,6 +15,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 import { ProjectsService } from './projects.service';
 
@@ -50,6 +52,16 @@ export class ProjectsController {
   @ApiOperation({ summary: 'Get project details' })
   findOne(@Param('id') id: string, @CurrentUser() user: { userId: string; role: Role }) {
     return this.projectsService.findOne(id, user.userId, user.role);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update project (admin only)' })
+  update(
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectDto,
+    @CurrentUser() user: { userId: string; role: Role },
+  ) {
+    return this.projectsService.update(id, dto, user.userId, user.role);
   }
 
   @Post(':id/members')

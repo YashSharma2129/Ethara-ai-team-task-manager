@@ -9,6 +9,7 @@ import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { AddMemberDto } from './dto/add-member.dto';
 import { CreateProjectDto } from './dto/create-project.dto';
+import { UpdateProjectDto } from './dto/update-project.dto';
 import { PaginationDto } from '../common/dto/pagination.dto';
 
 @Injectable()
@@ -26,6 +27,8 @@ export class ProjectsService {
         data: {
           name: dto.name,
           description: dto.description,
+          status: dto.status,
+          dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
           adminId,
         },
       });
@@ -231,6 +234,34 @@ export class ProjectsService {
     return this.prisma.projectMember.delete({
       where: {
         projectId_userId: { projectId, userId: memberUserId },
+      },
+    });
+  }
+
+  /**
+   * Updates a project. Only allowed for project admin or global admin.
+   */
+  async update(projectId: string, dto: UpdateProjectDto, userId: string, role?: Role) {
+    const project = await this.prisma.project.findUnique({
+      where: { id: projectId },
+    });
+
+    if (!project) throw new NotFoundException('Project not found');
+
+    const isProjectAdmin = project.adminId === userId;
+    const isGlobalAdmin = role === Role.ADMIN;
+
+    if (!isProjectAdmin && !isGlobalAdmin) {
+      throw new ForbiddenException('Only project admins can update projects');
+    }
+
+    this.logger.log(`Project ${projectId} updated by ${isGlobalAdmin ? 'Global Admin' : 'Project Admin'} ${userId}`);
+
+    return this.prisma.project.update({
+      where: { id: projectId },
+      data: {
+        ...dto,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
       },
     });
   }

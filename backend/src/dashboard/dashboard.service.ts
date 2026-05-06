@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 
 import { Injectable } from '@nestjs/common';
-import { Role, TaskStatus, Priority } from '@prisma/client';
+import { Role, TaskStatus, Priority, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -14,10 +14,12 @@ export class DashboardService {
   async getStats(userId: string, role: Role) {
     const now = new Date();
 
-    const whereClause =
+    const whereClause: Prisma.TaskWhereInput =
       role === Role.ADMIN
-        ? { project: { adminId: userId } }
-        : { assignedToId: userId };
+        ? {}
+        : {
+            OR: [{ project: { adminId: userId } }, { assignedToId: userId }],
+          };
 
     // Run all aggregation queries in parallel
     const [

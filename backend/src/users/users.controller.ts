@@ -22,9 +22,7 @@ export class UsersController {
   }
 
   @Get()
-  @Roles(Role.ADMIN)
-  @UseGuards(RolesGuard)
-  @ApiOperation({ summary: 'List all users (with pagination) - Admin only' })
+  @ApiOperation({ summary: 'List all users (with pagination)' })
   findAll(@Query() pagination: PaginationDto) {
     return this.usersService.findAll(pagination);
   }

@@ -1,44 +1,68 @@
 "use client";
-
 import { AppShell } from "@/components/layout/AppShell";
-import { 
-  LayoutDashboard, 
-  Plus, 
-  MoreVertical, 
-  Clock, 
+import {
+  Plus,
+  MoreVertical,
+  Clock,
   Flag,
   User,
-  Loader2,
-  AlertCircle,
-  CheckCircle2,
+  Eye,
   Edit,
   Trash2,
-  Eye
+  Calendar,
+  Layout,
+  CheckCircle2,
+  Circle,
+  MoreHorizontal,
 } from "lucide-react";
-import { useTasks, useUpdateTask, useCreateTask, useProjects, useDeleteTask } from "@/hooks/useData";
+import {
+  useTasks,
+  useUpdateTask,
+  useCreateTask,
+  useProjects,
+  useDeleteTask,
+} from "@/hooks/useData";
 import { useAuth } from "@/context/AuthContext";
-import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
-import { SideDrawer, DrawerInput, DrawerSelect, DrawerTextarea } from "@/components/ui/SideDrawer";
+import {
+  SideDrawer,
+  DrawerInput,
+  DrawerSelect,
+  DrawerTextarea,
+} from "@/components/ui/SideDrawer";
+import { TaskDrawer } from "@/components/tasks/TaskDrawer";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useRouter } from "next/navigation";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 const COLUMNS = [
-  { id: 'TODO', title: 'To Do', color: 'bg-gray-100' },
-  { id: 'IN_PROGRESS', title: 'In Progress', color: 'bg-primary/5' },
-  { id: 'DONE', title: 'Completed', color: 'bg-success/5' },
+  { id: "TODO", title: "To Do", color: "text-[#6c757d] bg-[#f1f3f5]", dot: "bg-[#adb5bd]" },
+  { id: "IN_PROGRESS", title: "In Progress", color: "text-primary bg-primary/10", dot: "bg-primary" },
+  { id: "DONE", title: "Completed", color: "text-success bg-success/10", dot: "bg-success" },
 ];
 
+const PRIORITY_THEMES: Record<string, string> = {
+  URGENT: "bg-danger/10 text-danger",
+  HIGH: "bg-warning/10 text-warning",
+  MEDIUM: "bg-primary/10 text-primary",
+  LOW: "bg-success/10 text-success",
+};
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
+
 export default function KanbanPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const { data: tasks, isLoading } = useTasks();
   const { data: projects } = useProjects();
   const updateMutation = useUpdateTask();
   const createMutation = useCreateTask();
   const deleteMutation = useDeleteTask();
   const router = useRouter();
+
   const [mounted, setMounted] = useState(false);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<any>(null);
@@ -51,283 +75,233 @@ export default function KanbanPage() {
 
   const onDragEnd = (result: any) => {
     const { destination, source, draggableId } = result;
-
     if (!destination) return;
     if (destination.droppableId === source.droppableId && destination.index === source.index) return;
 
     const task = tasks?.data?.find((t: any) => t.id === draggableId);
     if (task) {
-      updateMutation.mutate({ 
-        id: draggableId, 
-        data: { ...task, status: destination.droppableId } 
-      }, {
-        onSuccess: () => toast.success("Task status updated"),
-        onError: () => toast.error("Failed to update status")
-      });
+      updateMutation.mutate(
+        { id: draggableId, data: { status: destination.droppableId } },
+        {
+          onSuccess: () => toast.success("Task updated"),
+          onError: () => toast.error("Update failed"),
+        }
+      );
     }
   };
 
-  const handleDrawerSubmit = async (values: any) => {
+  async function handleDrawerSubmit(values: any) {
     if (editingTask) {
       await updateMutation.mutateAsync({ id: editingTask.id, data: values });
-      toast.success("Task updated successfully");
+      toast.success("Task updated");
     } else {
       await createMutation.mutateAsync(values);
-      toast.success("Task created successfully");
+      toast.success("Task created");
     }
     setIsDrawerOpen(false);
     setEditingTask(null);
-  };
+  }
 
-  const handleDelete = async () => {
-    if (taskToDelete) {
-      await deleteMutation.mutateAsync(taskToDelete);
-      setIsConfirmOpen(false);
-      setTaskToDelete(null);
-      toast.success("Task deleted successfully");
-    }
-  };
+  async function handleDelete() {
+    if (!taskToDelete) return;
+    await deleteMutation.mutateAsync(taskToDelete, {
+      onSuccess: () => {
+        toast.success("Task deleted");
+        setIsConfirmOpen(false);
+        setTaskToDelete(null);
+      },
+    });
+  }
 
   if (isLoading || !mounted) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-[1600px]">
-          <div className="mb-8 flex justify-between items-center">
-            <Skeleton className="h-10 w-64" />
-            <Skeleton className="h-10 w-32" />
+        <div className="mx-auto max-w-[1600px] px-6 py-8 space-y-8">
+          <div className="flex justify-between items-center">
+            <Skeleton className="h-10 w-64 rounded-xl" />
+            <Skeleton className="h-10 w-32 rounded-xl" />
           </div>
-          <div className="flex gap-6 overflow-x-hidden">
-             {[1,2,3].map(i => (
-                <div key={i} className="w-[350px] space-y-4">
-                   <Skeleton className="h-12 w-full rounded-2xl" />
-                   <CardSkeleton />
-                   <CardSkeleton />
-                   <CardSkeleton />
-                </div>
-             ))}
+          <div className="flex gap-6 overflow-hidden">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-[600px] w-[360px] shrink-0 rounded-3xl" />
+            ))}
           </div>
         </div>
       </AppShell>
     );
   }
 
-  const tasksByStatus = (status: string) => tasks?.data?.filter((t: any) => t.status === status) || [];
+  const tasksByStatus = (st: string) => tasks?.data?.filter((t: any) => t.status === st) || [];
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1600px] h-full flex flex-col">
-        <div className="mb-8 flex items-center justify-between">
+      <div className="mx-auto flex h-full max-w-[1600px] flex-col px-6 py-8">
+        {/* Header */}
+        <div className="mb-10 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-[#343a40] tracking-tight">Kanban Board</h1>
-            <p className="text-sm text-[#6c757d] font-medium mt-1">Visualize and manage your team workflow.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight text-[#343a40]">Board</h1>
+            <p className="mt-1 text-sm font-medium text-[#6c757d]">Manage workflows across your projects.</p>
           </div>
-          {isAdmin && (
-            <button 
-              onClick={() => setIsDrawerOpen(true)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
-            >
-              <Plus size={18} />
-              New Task
-            </button>
-          )}
+          <button
+            onClick={() => setIsDrawerOpen(true)}
+            className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+          >
+            <Plus size={18} />
+            New Task
+          </button>
         </div>
 
+        {/* Board */}
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex flex-1 gap-6 overflow-x-auto pb-4 no-scrollbar min-h-[70vh]">
-            {COLUMNS.map((column) => (
-              <div key={column.id} className="flex flex-col w-[350px] min-w-[350px] rounded-2xl bg-[#f4f5f7]/50 border border-[#e9ebec]">
-                <div className="p-4 flex items-center justify-between border-b border-[#e9ebec] bg-white rounded-t-2xl">
-                  <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${
-                      column.id === 'DONE' ? 'bg-success' : column.id === 'IN_PROGRESS' ? 'bg-primary' : 'bg-[#adb5bd]'
-                    }`} />
-                    <h3 className="text-sm font-bold text-[#343a40] uppercase tracking-wider">{column.title}</h3>
-                    <span className="rounded-full bg-[#f8f8fb] px-2 py-0.5 text-[10px] font-bold text-[#6c757d]">
-                      {tasksByStatus(column.id).length}
-                    </span>
+          <div className="flex flex-1 gap-6 overflow-x-auto pb-6 no-scrollbar min-h-[70vh]">
+            {COLUMNS.map((col) => {
+              const colTasks = tasksByStatus(col.id);
+              return (
+                <div key={col.id} className="flex w-[360px] min-w-[360px] flex-col rounded-3xl bg-[#f8f9fa] border border-[#eff2f7]">
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between px-5 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-2 w-2 rounded-full ${col.dot}`} />
+                      <h3 className="text-[11px] font-extrabold uppercase tracking-widest text-[#343a40]">
+                        {col.title}
+                      </h3>
+                      <span className={`rounded-lg px-2 py-0.5 text-[10px] font-extrabold ${col.color}`}>
+                        {colTasks.length}
+                      </span>
+                    </div>
+                    <MoreHorizontal size={16} className="text-[#adb5bd] cursor-pointer hover:text-[#6c757d]" />
                   </div>
-                  <MoreVertical size={16} className="text-[#adb5bd]" />
-                </div>
 
-                <Droppable droppableId={column.id}>
-                  {(provided) => (
-                    <div 
-                      {...provided.droppableProps} 
-                      ref={provided.innerRef}
-                      className="p-4 flex-1 space-y-4"
-                    >
-                      {tasksByStatus(column.id).map((task: any, index: number) => (
-                        <Draggable key={task.id} draggableId={task.id} index={index}>
-                          {(provided) => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="group rounded-xl border border-[#e9ebec] bg-white p-4 shadow-sm hover:shadow-md transition-all cursor-grab active:cursor-grabbing"
-                            >
-                              <div className="mb-3 flex items-center justify-between">
-                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
-                                  task.priority === 'URGENT' ? 'bg-danger/10 text-danger' : 
-                                  task.priority === 'HIGH' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
-                                }`}>
-                                  {task.priority}
-                                </span>
-                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary">
-                                  {task.assignedTo?.name?.charAt(0) || 'U'}
+                  <Droppable droppableId={col.id}>
+                    {(provided, snapshot) => (
+                      <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className={`flex-1 space-y-4 p-4 transition-colors rounded-b-3xl ${
+                          snapshot.isDraggingOver ? "bg-primary/5" : ""
+                        }`}
+                      >
+                        {colTasks.map((t: any, idx: number) => (
+                          <Draggable key={t.id} draggableId={t.id} index={idx}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={`group relative rounded-2xl border border-[#eff2f7] bg-white p-5 shadow-sm transition-all ${
+                                  snapshot.isDragging ? "rotate-2 scale-105 shadow-2xl z-[100]" : "hover:shadow-md"
+                                }`}
+                              >
+                                {/* Card Header */}
+                                <div className="mb-3 flex items-center justify-between">
+                                  <span className={`rounded-lg px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider ${PRIORITY_THEMES[t.priority]}`}>
+                                    {t.priority}
+                                  </span>
+                                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/10 text-[10px] font-extrabold text-primary border border-white">
+                                    {t.assignedTo?.name?.charAt(0) || "U"}
+                                  </div>
                                 </div>
-                              </div>
-                              <h4 className="text-sm font-bold text-[#343a40] group-hover:text-primary transition-colors line-clamp-2 mb-2">
-                                {task.title}
-                              </h4>
-                              
-                              <p className="text-[11px] text-[#6c757d] line-clamp-2 leading-relaxed mb-4">
-                                {task.description}
-                              </p>
 
-                              {/* Hover Actions */}
-                              <div className="absolute inset-0 bg-white/95 rounded-xl flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-10 backdrop-blur-sm">
-                                <button 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    router.push(`/tasks/${task.id}`);
-                                  }}
-                                  className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
-                                  title="View"
-                                >
-                                  <Eye size={16} />
-                                </button>
-                                {isAdmin && (
-                                  <>
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setEditingTask(task);
-                                        setIsDrawerOpen(true);
-                                      }}
-                                      className="p-2 rounded-lg bg-[#f8f8fb] text-[#343a40] hover:bg-primary hover:text-white transition-all shadow-sm"
-                                      title="Edit"
-                                    >
-                                      <Edit size={16} />
-                                    </button>
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setTaskToDelete(task.id);
-                                        setIsConfirmOpen(true);
-                                      }}
-                                      className="p-2 rounded-lg bg-danger/10 text-danger hover:bg-danger hover:text-white transition-all shadow-sm"
-                                      title="Delete"
-                                    >
-                                      <Trash2 size={16} />
-                                    </button>
-                                  </>
-                                )}
-                              </div>
-
-                              <div className="flex items-center justify-between pt-3 border-t border-[#f8f8fb]">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#adb5bd]">
-                                  <Clock size={12} />
-                                  {task.dueDate ? new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'No due date'}
+                                <h4 className="mb-2 text-[13px] font-extrabold leading-snug text-[#343a40] transition-colors group-hover:text-primary">
+                                  {t.title}
+                                </h4>
+                                
+                                <div className="mb-4 flex items-center gap-2 text-[10px] font-bold text-[#adb5bd]">
+                                  <Layout size={12} />
+                                  <span className="truncate">{t.project?.name || "No Project"}</span>
                                 </div>
-                                <div className="flex -space-x-2">
-                                  {/* Just a decorative avatar stack */}
-                                  <div className="h-5 w-5 rounded-full border border-white bg-gray-200" />
-                                  <div className="h-5 w-5 rounded-full border border-white bg-primary/10 flex items-center justify-center text-[8px] font-bold text-primary">
-                                    +1
+
+                                {/* Actions (Always visible on hover) */}
+                                <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                   <button 
+                                     onClick={() => router.push(`/tasks/${t.id}`)}
+                                     className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-primary transition-all"
+                                     title="View Details"
+                                   >
+                                     <Eye size={14} />
+                                   </button>
+                                   
+                                   {isAdmin || t.project?.adminId === user?.id ? (
+                                     <>
+                                       <button 
+                                         onClick={() => { setEditingTask(t); setIsDrawerOpen(true); }}
+                                         className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-[#343a40] transition-all"
+                                         title="Edit Task"
+                                       >
+                                         <Edit size={14} />
+                                       </button>
+                                       <button 
+                                         onClick={() => { setTaskToDelete(t.id); setIsConfirmOpen(true); }}
+                                         className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:bg-danger/5 hover:text-danger transition-all"
+                                         title="Delete Task"
+                                       >
+                                         <Trash2 size={14} />
+                                       </button>
+                                     </>
+                                   ) : (
+                                     <div className="relative group/tooltip">
+                                       <button 
+                                         disabled
+                                         className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd]/30 shadow-sm cursor-not-allowed"
+                                       >
+                                         <Trash2 size={14} />
+                                       </button>
+                                       <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#0f2440] px-3 py-1.5 text-[10px] font-bold text-white opacity-0 transition-all group-hover/tooltip:opacity-100 z-[110] shadow-xl">
+                                         Only project admins can manage
+                                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-[4px] border-transparent border-l-[#0f2440]" />
+                                       </span>
+                                     </div>
+                                   )}
+                                </div>
+
+                                <div className="flex items-center justify-between border-t border-[#f8f9fa] pt-4 mt-2">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#adb5bd]">
+                                    <Calendar size={12} />
+                                    {t.dueDate ? fmt(new Date(t.dueDate).toISOString()) : "No due date"}
+                                  </div>
+                                  <div className="flex -space-x-1.5">
+                                    <div className="h-5 w-5 rounded-full border-2 border-white bg-[#f1f3f5]" />
+                                    <div className="h-5 w-5 rounded-full border-2 border-white bg-primary/10 flex items-center justify-center text-[8px] font-extrabold text-primary">
+                                      +1
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            ))}
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </div>
+              );
+            })}
           </div>
         </DragDropContext>
 
-        {/* Create SideDrawer */}
-        <SideDrawer
+        {/* Drawer */}
+        <TaskDrawer
           isOpen={isDrawerOpen}
-          onClose={() => {
-            setIsDrawerOpen(false);
-            setEditingTask(null);
-          }}
-          title={editingTask ? 'Edit Task' : 'Create New Task'}
-          subtitle={editingTask ? `Updating ${editingTask.title}` : 'Add a new task to your team workflow.'}
-          formKey={editingTask ? `edit-kanban-task-${editingTask.id}` : 'kanban-create-task'}
+          onClose={() => { setIsDrawerOpen(false); setEditingTask(null); }}
+          editingTask={editingTask}
           onSubmit={handleDrawerSubmit}
-          submitLabel={editingTask ? 'Update Task' : 'Create Task'}
-        >
-          <DrawerInput 
-            name="title" 
-            label="Task Title" 
-            placeholder="e.g., Design homepage mockup" 
-            isRequired 
-            defaultValue={editingTask?.title}
-          />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <DrawerSelect 
-              name="projectId" 
-              label="Project" 
-              isRequired
-              defaultValue={editingTask?.projectId}
-              options={projects?.data?.map((p: any) => ({ label: p.name, value: p.id })) || []}
-            />
-            <DrawerSelect 
-              name="priority" 
-              label="Priority" 
-              defaultValue={editingTask?.priority || 'MEDIUM'}
-              options={[
-                { label: 'Low', value: 'LOW' },
-                { label: 'Medium', value: 'MEDIUM' },
-                { label: 'High', value: 'HIGH' },
-                { label: 'Urgent', value: 'URGENT' },
-              ]}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <DrawerSelect 
-              name="status" 
-              label="Status" 
-              defaultValue={editingTask?.status || 'TODO'}
-              options={[
-                { label: 'To Do', value: 'TODO' },
-                { label: 'In Progress', value: 'IN_PROGRESS' },
-                { label: 'Done', value: 'DONE' },
-              ]}
-            />
-            <DrawerInput 
-              name="dueDate" 
-              label="Due Date" 
-              type="date"
-              defaultValue={editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : ''}
-            />
-          </div>
-
-          <DrawerTextarea 
-            name="description" 
-            label="Description" 
-            placeholder="What needs to be done?" 
-            defaultValue={editingTask?.description}
-          />
-        </SideDrawer>
+          formKeyPrefix="kanban-board"
+        />
 
         <ConfirmModal
           isOpen={isConfirmOpen}
           onClose={() => setIsConfirmOpen(false)}
           onConfirm={handleDelete}
           title="Delete Task"
-          message="Are you sure you want to delete this task? This action cannot be undone."
+          message="Delete this task permanently?"
           isLoading={deleteMutation.isPending}
         />
       </div>
     </AppShell>
   );
+}
+
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }

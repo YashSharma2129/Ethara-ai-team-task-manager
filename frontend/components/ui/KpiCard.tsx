@@ -1,46 +1,87 @@
-import { HelpCircle, LucideIcon, TrendingUp } from "lucide-react";
+"use client";
+
+import { LucideIcon } from "lucide-react";
 
 interface KpiCardProps {
   icon: LucideIcon;
   value: string | number;
   label: string;
-  iconColor: 'primary' | 'success' | 'danger' | 'warning' | 'info';
+  iconColor: "primary" | "success" | "danger" | "warning" | "info";
+  sub?: string; // e.g. "+3 this week"
+  trend?: "up" | "down" | "neutral";
 }
 
-export const KpiCard = ({ icon: Icon, value, label, iconColor }: KpiCardProps) => {
-  const colorMap = {
-    primary: 'bg-primary/10 text-primary border-primary/20 shadow-primary/5',
-    success: 'bg-success/10 text-success border-success/20 shadow-success/5',
-    danger: 'bg-danger/10 text-danger border-danger/20 shadow-danger/5',
-    warning: 'bg-warning/10 text-warning border-warning/20 shadow-warning/5',
-    info: 'bg-info/10 text-info border-info/20 shadow-info/5',
+export const KpiCard = ({
+  icon: Icon,
+  value,
+  label,
+  iconColor,
+  sub,
+  trend = "neutral",
+}: KpiCardProps) => {
+  const palette = {
+    primary: {
+      icon: "bg-primary/8 text-primary",
+      glow: "group-hover:shadow-primary/10",
+      bar: "bg-primary",
+    },
+    success: {
+      icon: "bg-success/8 text-success",
+      glow: "group-hover:shadow-success/10",
+      bar: "bg-success",
+    },
+    danger: {
+      icon: "bg-danger/8 text-danger",
+      glow: "group-hover:shadow-danger/10",
+      bar: "bg-danger",
+    },
+    warning: {
+      icon: "bg-warning/8 text-warning",
+      glow: "group-hover:shadow-warning/10",
+      bar: "bg-warning",
+    },
+    info: {
+      icon: "bg-info/8 text-info",
+      glow: "group-hover:shadow-info/10",
+      bar: "bg-info",
+    },
   };
 
+  const trendColor =
+    trend === "up"
+      ? "text-success"
+      : trend === "down"
+      ? "text-danger"
+      : "text-[#adb5bd]";
+
   return (
-    <div className="relative overflow-hidden flex flex-col justify-between rounded-3xl border border-[#e9ebec] bg-white p-7 shadow-sm transition-all duration-500 hover:shadow-2xl hover:shadow-primary/5 hover:-translate-y-1 cursor-pointer group">
-      {/* Decorative background pattern */}
-      <div className="absolute -right-4 -top-4 h-24 w-24 rounded-full bg-[#f8f8fb] opacity-50 transition-all duration-700 group-hover:scale-150 group-hover:bg-primary/5" />
-      
-      <div className="relative z-10 flex items-start justify-between mb-4">
-        <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border ${colorMap[iconColor]} transition-all duration-500 group-hover:scale-110 group-hover:rotate-6`}>
-          <Icon size={28} strokeWidth={1.5} />
+    <div
+      className={`group relative overflow-hidden rounded-2xl border border-[#eff2f7] bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl ${palette[iconColor].glow}`}
+    >
+      {/* Subtle top accent bar */}
+      <div
+        className={`absolute left-0 top-0 h-0.5 w-full ${palette[iconColor].bar} opacity-60`}
+      />
+
+      <div className="flex items-start justify-between">
+        <div
+          className={`flex h-11 w-11 items-center justify-center rounded-xl ${palette[iconColor].icon} transition-transform duration-300 group-hover:scale-110`}
+        >
+          <Icon size={22} strokeWidth={1.8} />
         </div>
-        <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1 text-[10px] font-extrabold text-success uppercase tracking-widest bg-success/10 px-2 py-1 rounded-lg">
-            <TrendingUp size={10} />
-            +12%
-          </div>
-        </div>
+
+        {sub && (
+          <span className={`text-[11px] font-bold ${trendColor}`}>{sub}</span>
+        )}
       </div>
 
-      <div className="relative z-10">
-        <h3 className="text-3xl font-extrabold text-[#343a40] tracking-tight leading-none mb-2">
+      <div className="mt-5">
+        <p className="text-[11px] font-bold uppercase tracking-widest text-[#adb5bd]">
+          {label}
+        </p>
+        <h3 className="mt-1.5 text-3xl font-extrabold tracking-tight text-[#343a40]">
           {value}
         </h3>
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-[#6c757d] uppercase tracking-widest opacity-80">{label}</p>
-          <HelpCircle size={14} className="text-[#adb5bd] hover:text-primary transition-colors cursor-help" />
-        </div>
       </div>
     </div>
   );

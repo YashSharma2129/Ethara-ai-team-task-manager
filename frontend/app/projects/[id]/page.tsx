@@ -1,30 +1,50 @@
 "use client";
-
 import { AppShell } from "@/components/layout/AppShell";
-import { 
-  FolderKanban, 
-  ArrowLeft, 
-  Calendar, 
-  Users, 
-  CheckCircle2, 
-  Clock, 
-  AlertCircle,
-  Plus,
-  Edit,
-  Trash2,
-  User as UserIcon
+import {
+  FolderKanban, ArrowLeft, Calendar, Users, CheckCircle2, Clock,
+  AlertCircle, Plus, Edit, Trash2, Eye, Search, X, Target, Layout, User, UserPlus, Flag,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { SideDrawer, DrawerInput, DrawerSelect, DrawerTextarea } from "@/components/ui/SideDrawer";
+import {
+  SideDrawer, DrawerInput, DrawerSelect, DrawerTextarea,
+} from "@/components/ui/SideDrawer";
+import { TaskDrawer } from "@/components/tasks/TaskDrawer";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useTasks, useCreateTask, useProjects, useProjectDetails, useProjectTasks, useUpdateTask, useDeleteTask } from "@/hooks/useData";
-import { KpiCard } from "@/components/ui/KpiCard";
+import {
+  useProjectDetails, useProjectTasks, useUpdateProject, useDeleteProject,
+  useCreateTask, useUpdateTask, useDeleteTask, useUsers,
+} from "@/hooks/useData";
 import { useAuth } from "@/context/AuthContext";
-import { Skeleton, CardSkeleton, TableRowSkeleton } from "@/components/ui/Skeleton";
+import { Skeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import api from "@/lib/api";
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const STATUS_THEMES: Record<string, { cls: string; icon: any; label: string }> = {
+  DONE: { cls: "bg-success/10 text-success", icon: CheckCircle2, label: "Done" },
+  IN_PROGRESS: { cls: "bg-primary/10 text-primary", icon: Clock, label: "In Progress" },
+  TODO: { cls: "bg-[#f1f3f5] text-[#6c757d]", icon: AlertCircle, label: "To Do" },
+};
+
+const PRIORITY_THEMES: Record<string, string> = {
+  URGENT: "bg-danger/10 text-danger",
+  HIGH: "bg-warning/10 text-warning",
+  MEDIUM: "bg-primary/10 text-primary",
+  LOW: "bg-success/10 text-success",
+};
+
+function fmt(d: string) {
+  return new Date(d).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function initials(name = "") {
+  return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -33,435 +53,447 @@ export default function ProjectDetailsPage() {
   const { isAdmin, user } = useAuth();
   const queryClient = useQueryClient();
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'members'>('tasks');
+  const [search, setSearch] = useState("");
   const [isMemberDrawerOpen, setIsMemberDrawerOpen] = useState(false);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<any>(null);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [memberToRemove, setMemberToRemove] = useState<{ id: string, name: string } | null>(null);
+  const [memberToRemove, setMemberToRemove] = useState<any>(null);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const { data: project, isLoading: projectLoading } = useProjectDetails(id);
   const { data: tasks, isLoading: tasksLoading } = useProjectTasks(id);
-  const { data: projects } = useProjects();
-  
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
-  const deleteMutation = useDeleteTask();
+  const deleteTaskMutation = useDeleteTask();
 
-  const [editingTask, setEditingTask] = useState<any>(null);
-  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
-  const [isTaskConfirmOpen, setIsTaskConfirmOpen] = useState(false);
+  const canManage = isAdmin || project?.adminId === user?.id;
 
   const addMemberMutation = useMutation({
     mutationFn: async (values: any) => {
-      const response = await api.post(`/projects/${id}/members`, { email: values.email, role: 'MEMBER' });
-      return response.data;
+      const resp = await api.post(`/projects/${id}/members`, { userId: values.userId });
+      return resp.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', id] });
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
       setIsMemberDrawerOpen(false);
-      toast.success("Member added successfully");
+      toast.success("Member invited successfully");
     },
-    onError: () => toast.error("Failed to add member")
+    onError: (e: any) => toast.error(e.response?.data?.message ?? "Failed to add member"),
   });
-
-  const handleTaskSubmit = async (values: any) => {
-    if (editingTask) {
-      await updateMutation.mutateAsync({ id: editingTask.id, data: values });
-      toast.success("Task updated successfully");
-    } else {
-      await createMutation.mutateAsync({ ...values, projectId: id });
-      toast.success("Task created successfully");
-    }
-    queryClient.invalidateQueries({ queryKey: ['project-tasks', id] });
-    setIsTaskDrawerOpen(false);
-    setEditingTask(null);
-  };
-
-  const handleTaskDelete = async () => {
-    if (taskToDelete) {
-      deleteMutation.mutate(taskToDelete, {
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: ['project-tasks', id] });
-          setIsTaskConfirmOpen(false);
-          setTaskToDelete(null);
-          toast.success("Task deleted successfully");
-        },
-        onError: (error: any) => {
-          const message = error.response?.data?.message || "Failed to delete task";
-          toast.error(message);
-          setIsTaskConfirmOpen(false);
-          setTaskToDelete(null);
-        }
-      });
-    }
-  };
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
-      const response = await api.delete(`/projects/${id}/members/${userId}`);
-      return response.data;
+      const resp = await api.delete(`/projects/${id}/members/${userId}`);
+      return resp.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['project', id] });
+      queryClient.invalidateQueries({ queryKey: ["project", id] });
       setIsConfirmOpen(false);
       setMemberToRemove(null);
-      toast.success("Member removed successfully");
+      toast.success("Member removed");
     },
-    onError: () => toast.error("Failed to remove member")
+    onError: () => toast.error("Failed to remove member"),
   });
 
-  if (projectLoading || tasksLoading) {
+  const filteredTasks = useMemo(() => {
+    const q = search.toLowerCase();
+    return (tasks?.data ?? []).filter((t: any) => t.title.toLowerCase().includes(q));
+  }, [tasks, search]);
+
+  async function handleTaskSubmit(values: any) {
+    if (editingTask) {
+      await updateMutation.mutateAsync({ id: editingTask.id, data: values });
+      toast.success("Task updated");
+    } else {
+      await createMutation.mutateAsync({ ...values, projectId: id });
+      toast.success("Task created");
+    }
+    queryClient.invalidateQueries({ queryKey: ["project-tasks", id] });
+    setIsTaskDrawerOpen(false);
+    setEditingTask(null);
+  }
+
+  async function handleTaskDelete() {
+    if (!taskToDelete) return;
+    deleteTaskMutation.mutate(taskToDelete, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ["project-tasks", id] });
+        setTaskToDelete(null);
+        setIsDeleteConfirmOpen(false);
+        toast.success("Task deleted");
+      },
+      onError: (e: any) => toast.error(e.response?.data?.message ?? "Delete failed"),
+    });
+  }
+
+  const { data: usersData, isLoading: usersLoading } = useUsers();
+  const allUsers = usersData?.data ?? [];
+  const existingMemberIds = new Set(project?.members?.map((m: any) => m.userId) || []);
+  const nonMembers = allUsers.filter((u: any) => !existingMemberIds.has(u.id));
+
+  if (projectLoading || tasksLoading || usersLoading) {
     return (
       <AppShell>
-        <div className="mx-auto max-w-[1400px]">
-          <Skeleton className="h-6 w-32 mb-6" />
-          <div className="flex gap-6 mb-8">
-            <Skeleton className="h-20 w-20 rounded-2xl" />
-            <div className="space-y-2 flex-1">
-               <Skeleton className="h-8 w-1/3" />
-               <Skeleton className="h-4 w-1/2" />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-10">
-            <CardSkeleton />
-            <CardSkeleton />
-            <CardSkeleton />
-            <CardSkeleton />
-          </div>
-          <div className="bg-white rounded-2xl border border-[#e9ebec] shadow-sm overflow-hidden">
-             <div className="h-16 w-full border-b border-[#e9ebec] px-6 flex items-center gap-4">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-6 w-24" />
-             </div>
-             {[1,2,3,4,5].map(i => <TableRowSkeleton key={i} />)}
+        <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-8">
+          <Skeleton className="h-6 w-32 rounded-lg" />
+          <Skeleton className="h-48 w-full rounded-3xl" />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+            <Skeleton className="lg:col-span-8 h-96 rounded-3xl" />
+            <Skeleton className="lg:col-span-4 h-96 rounded-3xl" />
           </div>
         </div>
       </AppShell>
     );
   }
 
-  const taskStats = {
+  const stats = {
     total: tasks?.data?.length || 0,
-    done: tasks?.data?.filter((t: any) => t.status === 'DONE').length || 0,
-    todo: tasks?.data?.filter((t: any) => t.status === 'TODO').length || 0,
-    inProgress: tasks?.data?.filter((t: any) => t.status === 'IN_PROGRESS').length || 0,
+    done: tasks?.data?.filter((t: any) => t.status === "DONE").length || 0,
+    inProgress: tasks?.data?.filter((t: any) => t.status === "IN_PROGRESS").length || 0,
+    todo: tasks?.data?.filter((t: any) => t.status === "TODO").length || 0,
   };
-
-  const completionRate = taskStats.total > 0 ? Math.round((taskStats.done / taskStats.total) * 100) : 0;
+  const rate = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+  const members = project?.members || [];
 
   return (
     <AppShell>
-      <div className="mx-auto max-w-[1400px]">
-        {/* Breadcrumbs / Back */}
-        <button 
-          onClick={() => router.back()}
-          className="mb-6 flex cursor-pointer items-center gap-2 text-sm font-bold text-[#6c757d] hover:text-primary transition-all"
+      <div className="mx-auto max-w-[1400px] px-6 py-8">
+        {/* Navigation */}
+        <button
+          onClick={() => router.push("/projects")}
+          className="group mb-8 flex items-center gap-2 text-sm font-bold text-[#adb5bd] transition-colors hover:text-primary"
         >
-          <ArrowLeft size={16} />
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] shadow-sm transition-transform group-hover:-translate-x-1">
+            <ArrowLeft size={16} />
+          </div>
           Back to Projects
         </button>
 
-        {/* Project Header */}
-        <div className="mb-8 flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <div className="flex items-start gap-6">
-            <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm">
-              <FolderKanban size={40} />
+        {/* ─── Hero Header Card ─── */}
+        <div className="mb-8 rounded-[32px] border border-[#eff2f7] bg-white p-8 shadow-sm">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-6">
+              <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 text-primary">
+                <FolderKanban size={32} />
+              </div>
+              <div>
+                <div className="flex items-center gap-3">
+                  <h1 className="text-2xl font-extrabold tracking-tight text-[#343a40]">
+                    {project.name}
+                  </h1>
+                  <span className="rounded-lg bg-primary/10 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-widest text-primary">
+                    {project.status || "ACTIVE"}
+                  </span>
+                </div>
+                <p className="mt-1 max-w-xl text-[13px] leading-relaxed text-[#6c757d]">
+                  {project.description || "Project strategy and team collaboration."}
+                </p>
+                <div className="mt-3 flex items-center gap-4 text-[11px] font-bold text-[#adb5bd]">
+                  <div className="flex items-center gap-1.5">
+                    <Calendar size={12} />
+                    Started {new Date(project.createdAt).toLocaleDateString()}
+                  </div>
+                  <div className="h-1 w-1 rounded-full bg-[#dee2e6]" />
+                  <div className="flex items-center gap-1.5">
+                    <Users size={12} />
+                    {members.length} member{members.length !== 1 ? "s" : ""}
+                  </div>
+                  <div className="h-1 w-1 rounded-full bg-[#dee2e6]" />
+                  <div className="flex items-center gap-1.5">
+                    <Target size={12} />
+                    {stats.total} task{stats.total !== 1 ? "s" : ""}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-[#343a40] tracking-tight mb-2">{project?.name}</h1>
-              <p className="max-w-2xl text-sm text-[#6c757d] leading-relaxed">
-                {project?.description || "No description provided for this project."}
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            {isAdmin && (
-              <button 
-                onClick={() => setIsTaskDrawerOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
-              >
-                <Plus size={18} />
-                Add Task
-              </button>
-            )}
-          </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div className="mb-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <KpiCard icon={FolderKanban} value={taskStats.total} label="Total Tasks" iconColor="primary" />
-          <KpiCard icon={CheckCircle2} value={taskStats.done} label="Completed" iconColor="success" />
-          <KpiCard icon={Clock} value={taskStats.inProgress} label="In Progress" iconColor="info" />
-          <div className="flex items-center gap-4 rounded-xl border border-[#e9ebec] bg-white p-5 shadow-sm">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-success/10 text-success">
-              <span className="text-xs font-bold">{completionRate}%</span>
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-[#343a40]">{completionRate}%</p>
-              <p className="text-sm font-medium text-[#6c757d]">Completion Rate</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tasks/Members Toggle */}
-        <div className="rounded-2xl border border-[#e9ebec] bg-white shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-[#eff2f7] flex items-center justify-between">
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setActiveTab('tasks')}
-                className={`text-lg font-bold transition-all cursor-pointer ${activeTab === 'tasks' ? 'text-primary' : 'text-[#adb5bd] hover:text-[#343a40]'}`}
-              >
-                Project Tasks
-              </button>
-              <button 
-                onClick={() => setActiveTab('members')}
-                className={`text-lg font-bold transition-all cursor-pointer ${activeTab === 'members' ? 'text-primary' : 'text-[#adb5bd] hover:text-[#343a40]'}`}
-              >
-                Team Members
-              </button>
-            </div>
-            {activeTab === 'members' && isAdmin && (
-              <button 
-                onClick={() => setIsMemberDrawerOpen(true)}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
-              >
-                <Plus size={14} />
-                Add Member
-              </button>
+            {canManage && (
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsMemberDrawerOpen(true)}
+                  className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-2.5 text-sm font-bold text-primary transition-all hover:bg-primary hover:text-white active:scale-95 cursor-pointer"
+                >
+                  <UserPlus size={16} />
+                  Invite Member
+                </button>
+                <button
+                  onClick={() => { setEditingTask(null); setIsTaskDrawerOpen(true); }}
+                  className="flex items-center gap-2 rounded-2xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+                >
+                  <Plus size={16} />
+                  New Task
+                </button>
+              </div>
             )}
           </div>
 
-          {activeTab === 'tasks' ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-[#f8f8fb] text-[#6c757d]">
-                  <tr>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Task Name</th>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Assignee</th>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Status</th>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Priority</th>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Due Date</th>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#eff2f7]">
-                  {tasks?.data?.map((task: any) => (
-                    <tr key={task.id} className="hover:bg-[#f8f8fb]/50 transition-colors cursor-pointer group">
-                      <td className="px-6 py-4">
-                        <p className="font-semibold text-[#343a40] group-hover:text-primary transition-colors">{task.title}</p>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
-                            {task.assignedTo?.name?.charAt(0) || 'U'}
-                          </div>
-                          <span className="text-[#6c757d] font-medium">{task.assignedTo?.name || 'Unassigned'}</span>
+          {/* ─── Inline Stats Bar ─── */}
+          <div className="mt-6 grid grid-cols-2 gap-4 border-t border-[#f1f3f5] pt-6 sm:grid-cols-4">
+            {[
+              { label: "To Do", value: stats.todo, color: "text-[#6c757d]", bg: "bg-[#f1f3f5]" },
+              { label: "In Progress", value: stats.inProgress, color: "text-primary", bg: "bg-primary/10" },
+              { label: "Completed", value: stats.done, color: "text-success", bg: "bg-success/10" },
+              { label: "Completion", value: `${rate}%`, color: "text-[#343a40]", bg: "bg-[#f8f9fa]" },
+            ].map((s) => (
+              <div key={s.label} className={`flex items-center gap-3 rounded-2xl ${s.bg} px-4 py-3`}>
+                <span className={`text-xl font-extrabold ${s.color}`}>{s.value}</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#adb5bd]">{s.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ─── Main Content: 2-column layout ─── */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
+
+          {/* ─── LEFT: Tasks Section (8 cols) ─── */}
+          <div className="lg:col-span-8">
+            <div className="rounded-[28px] border border-[#eff2f7] bg-white shadow-sm overflow-hidden">
+              {/* Tasks Header */}
+              <div className="flex items-center justify-between border-b border-[#f1f3f5] px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <CheckCircle2 size={16} />
+                  </div>
+                  <h2 className="text-[14px] font-extrabold text-[#343a40]">Tasks</h2>
+                  <span className="rounded-lg bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-extrabold text-[#6c757d]">
+                    {stats.total}
+                  </span>
+                </div>
+                <div className="relative">
+                  <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#adb5bd]" />
+                  <input
+                    type="text"
+                    placeholder="Search…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-8 w-40 rounded-xl border border-[#eff2f7] bg-[#f8f9fa] pl-8 pr-3 text-[11px] outline-none transition-all focus:border-primary/40 focus:bg-white"
+                  />
+                </div>
+              </div>
+
+              {/* Task List */}
+              <div className="divide-y divide-[#f8f9fa]">
+                {filteredTasks.map((t: any) => {
+                  const st = STATUS_THEMES[t.status] || STATUS_THEMES.TODO;
+                  return (
+                    <div
+                      key={t.id}
+                      className="group flex items-center gap-4 px-6 py-4 transition-colors hover:bg-[#fafbfc] cursor-pointer"
+                      onClick={() => router.push(`/tasks/${t.id}`)}
+                    >
+                      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl ${st.cls}`}>
+                        <st.icon size={14} />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-extrabold text-[#343a40] group-hover:text-primary transition-colors">
+                          {t.title}
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-3 text-[10px] font-bold text-[#adb5bd]">
+                          {t.assignedTo && (
+                            <span className="flex items-center gap-1">
+                              <User size={10} />
+                              {t.assignedTo.name}
+                            </span>
+                          )}
+                          {t.dueDate && (
+                            <span className="flex items-center gap-1">
+                              <Calendar size={10} />
+                              {fmt(t.dueDate)}
+                            </span>
+                          )}
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          task.status === 'DONE' ? 'bg-success/10 text-success' : 
-                          task.status === 'IN_PROGRESS' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-[#6c757d]'
-                        }`}>
-                          {task.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          task.priority === 'URGENT' ? 'bg-danger/10 text-danger' : 
-                          task.priority === 'HIGH' ? 'bg-warning/10 text-warning' : 'bg-primary/10 text-primary'
-                        }`}>
-                          {task.priority}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-[#adb5bd] font-medium">
-                        {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/tasks/${task.id}`);
-                            }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary hover:text-white transition-all"
+                      </div>
+                      <span className={`rounded-lg px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider ${PRIORITY_THEMES[t.priority]}`}>
+                        {t.priority}
+                      </span>
+                      {canManage && (
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setEditingTask(t); setIsTaskDrawerOpen(true); }}
+                            className="rounded-lg p-1.5 text-[#adb5bd] hover:bg-[#f1f3f5] hover:text-[#343a40]"
                           >
-                            <UserIcon size={14} />
-                            View
+                            <Edit size={13} />
                           </button>
-                          
-                          <button 
-                            onClick={(e) => {
-                              if (!isAdmin) return;
-                              e.stopPropagation();
-                              setEditingTask(task);
-                              setIsTaskDrawerOpen(true);
-                            }}
-                            disabled={!isAdmin}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all
-                              ${isAdmin 
-                                ? 'text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white cursor-pointer' 
-                                : 'text-[#adb5bd] bg-[#f8f8fb] cursor-not-allowed opacity-60'}`}
-                            title={!isAdmin ? "Only admins can edit tasks" : ""}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setTaskToDelete(t.id); setIsDeleteConfirmOpen(true); }}
+                            className="rounded-lg p-1.5 text-[#adb5bd] hover:bg-danger/10 hover:text-danger"
                           >
-                            <Edit size={14} />
-                            Edit
-                          </button>
-                          <button 
-                            onClick={(e) => {
-                              if (!isAdmin) return;
-                              e.stopPropagation();
-                              setTaskToDelete(task.id);
-                              setIsTaskConfirmOpen(true);
-                            }}
-                            disabled={!isAdmin}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all
-                              ${isAdmin 
-                                ? 'text-danger bg-danger/5 hover:bg-danger hover:text-white cursor-pointer' 
-                                : 'text-[#adb5bd] bg-[#f8f8fb] cursor-not-allowed opacity-60'}`}
-                            title={!isAdmin ? "Only admins can delete tasks" : ""}
-                          >
-                            <Trash2 size={14} />
-                            Delete
+                            <Trash2 size={13} />
                           </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {!tasks?.data?.length && (
-                <div className="p-12 text-center text-[#adb5bd]">
-                  <AlertCircle size={40} className="mx-auto mb-4 opacity-20" />
-                  <p className="font-medium">No tasks found for this project yet.</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Empty state */}
+              {filteredTasks.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center">
+                  <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f1f3f5] text-[#adb5bd]">
+                    <CheckCircle2 size={24} />
+                  </div>
+                  <p className="text-sm font-bold text-[#343a40]">
+                    {search ? "No tasks match your search" : "No tasks yet"}
+                  </p>
+                  <p className="mt-1 text-[12px] text-[#adb5bd]">
+                    {search ? "Try a different keyword" : "Create your first task to get started"}
+                  </p>
+                  {!search && canManage && (
+                    <button
+                      onClick={() => { setEditingTask(null); setIsTaskDrawerOpen(true); }}
+                      className="mt-4 flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-[12px] font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95"
+                    >
+                      <Plus size={14} />
+                      Create Task
+                    </button>
+                  )}
                 </div>
               )}
             </div>
-          ) : (
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {project?.members?.map((member: any) => (
-                  <div key={member.id} className="group flex items-center justify-between rounded-xl border border-[#e9ebec] p-4 bg-[#f8f8fb]/50 transition-all hover:bg-white hover:shadow-md">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                        {member.name?.charAt(0)}
-                      </div>
-                      <div>
-                        <p className="text-sm font-bold text-[#343a40]">{member.name}</p>
-                        <p className="text-[10px] text-[#6c757d] font-medium">{member.email}</p>
-                      </div>
+          </div>
+
+          {/* ─── RIGHT: Team Sidebar (4 cols) ─── */}
+          <div className="lg:col-span-4 space-y-6">
+
+            {/* Team Members Card */}
+            <div className="rounded-[28px] border border-[#eff2f7] bg-white shadow-sm overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[#f1f3f5] px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
+                    <Users size={16} />
+                  </div>
+                  <h2 className="text-[14px] font-extrabold text-[#343a40]">Team</h2>
+                  <span className="rounded-lg bg-[#f1f3f5] px-2 py-0.5 text-[10px] font-extrabold text-[#6c757d]">
+                    {members.length}
+                  </span>
+                </div>
+                {canManage && (
+                  <button
+                    onClick={() => setIsMemberDrawerOpen(true)}
+                    className="flex h-8 w-8 items-center justify-center rounded-xl border border-primary/20 text-primary transition-all hover:bg-primary hover:text-white cursor-pointer"
+                    title="Invite Member"
+                  >
+                    <Plus size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="divide-y divide-[#f8f9fa]">
+                {members.map((m: any) => (
+                  <div key={m.id} className="group flex items-center gap-3 px-6 py-3.5 transition-colors hover:bg-[#fafbfc]">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 text-[11px] font-extrabold text-primary">
+                      {initials(m.user?.name)}
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${member.role === 'ADMIN' ? 'bg-primary/10 text-primary' : 'bg-[#e9ebec] text-[#6c757d]'}`}>
-                        {member.role}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-[13px] font-bold text-[#343a40]">{m.user?.name}</p>
+                      <p className="truncate text-[10px] text-[#adb5bd]">{m.user?.email}</p>
+                    </div>
+                    {m.userId === project.adminId ? (
+                      <span className="rounded-md bg-primary/10 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-widest text-primary">
+                        Owner
                       </span>
-                      {isAdmin && member.id !== user?.id && (
-                        <button 
-                          onClick={() => {
-                            setMemberToRemove({ id: member.id, name: member.name });
-                            setIsConfirmOpen(true);
-                          }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                    ) : (
+                      canManage && (
+                        <button
+                          onClick={() => { setMemberToRemove(m); setIsConfirmOpen(true); }}
+                          className="rounded-lg p-1.5 text-[#adb5bd] opacity-0 transition-all hover:bg-danger/10 hover:text-danger group-hover:opacity-100"
                           title="Remove Member"
                         >
-                          <Trash2 size={14} />
-                          Remove
+                          <X size={13} />
                         </button>
-                      )}
+                      )
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Invite CTA */}
+              {canManage && nonMembers.length > 0 && (
+                <div className="border-t border-[#f1f3f5] p-4">
+                  <button
+                    onClick={() => setIsMemberDrawerOpen(true)}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#dee2e6] py-3 text-[12px] font-bold text-[#adb5bd] transition-all hover:border-primary/40 hover:text-primary cursor-pointer"
+                  >
+                    <UserPlus size={14} />
+                    Invite a team member
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Info Card */}
+            <div className="rounded-[28px] border border-[#eff2f7] bg-white p-6 shadow-sm">
+              <h3 className="mb-4 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">
+                Project Info
+              </h3>
+              <div className="space-y-4">
+                {[
+                  { label: "Status", value: project.status || "ACTIVE", icon: Layout },
+                  { label: "Created", value: new Date(project.createdAt).toLocaleDateString(), icon: Calendar },
+                  { label: "Owner", value: members.find((m: any) => m.userId === project.adminId)?.user?.name || "—", icon: User },
+                  { label: "Tasks", value: `${stats.done}/${stats.total} completed`, icon: Target },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#f8f9fa] text-[#adb5bd]">
+                      <item.icon size={14} />
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-[#adb5bd]">{item.label}</p>
+                      <p className="text-[13px] font-bold text-[#343a40]">{item.value}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Add Member SideDrawer */}
+        {/* ─── Drawers & Modals ─── */}
         <SideDrawer
           isOpen={isMemberDrawerOpen}
           onClose={() => setIsMemberDrawerOpen(false)}
-          title="Invite Team Member"
-          subtitle="Add a new member to the project by their email address."
-          formKey="add-member"
-          onSubmit={async (values) => {
-            await addMemberMutation.mutateAsync(values);
-          }}
-          submitLabel="Send Invitation"
+          title="Invite Member"
+          subtitle="Add a new collaborator to the project."
+          formKey="invite-member"
+          onSubmit={addMemberMutation.mutateAsync}
         >
-          <DrawerInput 
-            name="email" 
-            label="Member Email" 
-            type="email" 
-            placeholder="colleague@company.com" 
-            isRequired 
+          <DrawerSelect
+            name="userId"
+            label="Select User"
+            placeholder="Search for a user..."
+            isRequired
+            options={nonMembers.map((u: any) => ({ label: `${u.name} (${u.email})`, value: u.id }))}
           />
         </SideDrawer>
 
-        {/* Create Task SideDrawer */}
-        <SideDrawer
+        <TaskDrawer
           isOpen={isTaskDrawerOpen}
-          onClose={() => {
-            setIsTaskDrawerOpen(false);
-            setEditingTask(null);
-          }}
-          title={editingTask ? 'Edit Task' : 'Create New Task'}
-          subtitle={editingTask ? `Updating ${editingTask.title}` : 'Add a new task to this project.'}
-          formKey={editingTask ? `edit-task-${editingTask.id}` : 'create-project-task'}
+          onClose={() => { setIsTaskDrawerOpen(false); setEditingTask(null); }}
+          editingTask={editingTask}
+          fixedProjectId={id}
           onSubmit={handleTaskSubmit}
-          submitLabel={editingTask ? 'Update Task' : 'Create Task'}
-        >
-          <DrawerInput 
-            name="title" 
-            label="Task Title" 
-            placeholder="e.g., Design homepage mockup" 
-            isRequired 
-            defaultValue={editingTask?.title}
-          />
-          
-          <div className="grid grid-cols-2 gap-4">
-            <DrawerSelect 
-              name="priority" 
-              label="Priority" 
-              defaultValue={editingTask?.priority || 'MEDIUM'}
-              options={[
-                { label: 'Low', value: 'LOW' },
-                { label: 'Medium', value: 'MEDIUM' },
-                { label: 'High', value: 'HIGH' },
-                { label: 'Urgent', value: 'URGENT' },
-              ]}
-            />
-            <DrawerInput 
-              name="dueDate" 
-              label="Due Date" 
-              type="date"
-              defaultValue={editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : ''}
-            />
-          </div>
-
-          <DrawerTextarea 
-            name="description" 
-            label="Description" 
-            placeholder="What needs to be done?" 
-            defaultValue={editingTask?.description}
-          />
-        </SideDrawer>
-
-        <ConfirmModal
-          isOpen={isTaskConfirmOpen}
-          onClose={() => setIsTaskConfirmOpen(false)}
-          onConfirm={handleTaskDelete}
-          title="Delete Task"
-          message="Are you sure you want to delete this task? This action cannot be undone."
-          isLoading={deleteMutation.isPending}
         />
 
         <ConfirmModal
           isOpen={isConfirmOpen}
           onClose={() => setIsConfirmOpen(false)}
-          onConfirm={() => memberToRemove && removeMemberMutation.mutate(memberToRemove.id)}
+          onConfirm={() => removeMemberMutation.mutate(memberToRemove.userId)}
           title="Remove Member"
-          message={`Are you sure you want to remove ${memberToRemove?.name} from this project? they will lose access to all tasks.`}
+          message={`Are you sure you want to remove ${memberToRemove?.user?.name}?`}
           isLoading={removeMemberMutation.isPending}
+        />
+
+        <ConfirmModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={() => { setIsDeleteConfirmOpen(false); setTaskToDelete(null); }}
+          onConfirm={handleTaskDelete}
+          title="Delete Task"
+          message="This task will be permanently removed. This action cannot be undone."
+          isLoading={deleteTaskMutation.isPending}
         />
       </div>
     </AppShell>

@@ -15,6 +15,8 @@ interface User {
   department?: string;
   title?: string;
   yearsOfExperience?: string;
+  linkedin?: string;
+  gender?: string;
 }
 
 interface AuthContextType {
