@@ -124,7 +124,7 @@ export class TasksService {
         orderBy: { [sortField]: order || 'desc' },
         include: { 
           assignedTo: ASSIGNEE_SELECT,
-          project: { select: { id: true, adminId: true } }
+          project: { select: { id: true, name: true, adminId: true } }
         },
       }),
       this.prisma.task.count({ where }),
