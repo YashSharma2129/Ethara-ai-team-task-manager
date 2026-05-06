@@ -138,9 +138,10 @@ export default function UsersPage() {
                       <td className="px-6 py-4 text-right">
                         <button 
                           onClick={() => handleDelete(user.id, user.name)}
-                          className="p-2 text-[#adb5bd] hover:text-danger hover:bg-danger/10 rounded-lg transition-all cursor-pointer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all cursor-pointer ml-auto"
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={14} />
+                          Delete
                         </button>
                       </td>
                     </tr>

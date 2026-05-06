@@ -13,11 +13,10 @@ import {
 } from "lucide-react";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { SideDrawer, DrawerInput, DrawerSelect, DrawerTextarea } from '@/components/ui/SideDrawer';
 import { useProjects, useCreateProject, useUpdateProject, useDeleteProject } from '@/hooks/useData';
 import { useAuth } from '@/context/AuthContext';
-import { Modal } from '@/components/ui/Modal';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { ProjectForm } from '@/components/projects/ProjectForm';
 import { Skeleton, CardSkeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 
@@ -29,29 +28,22 @@ export default function ProjectsPage() {
   const updateMutation = useUpdateProject();
   const deleteMutation = useDeleteProject();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState<string | null>(null);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
 
-  const handleCreate = (data: any) => {
-    createMutation.mutate(data, {
-      onSuccess: () => {
-        setIsModalOpen(false);
-        toast.success("Project created successfully");
-      },
-    });
-  };
-
-  const handleUpdate = (data: any) => {
-    updateMutation.mutate({ id: editingProject.id, data }, {
-      onSuccess: () => {
-        setIsModalOpen(false);
-        setEditingProject(null);
-        toast.success("Project updated successfully");
-      },
-    });
+  const handleDrawerSubmit = async (values: any) => {
+    if (editingProject) {
+      await updateMutation.mutateAsync({ id: editingProject.id, data: values });
+      toast.success("Project updated successfully");
+    } else {
+      await createMutation.mutateAsync(values);
+      toast.success("Project created successfully");
+    }
+    setIsDrawerOpen(false);
+    setEditingProject(null);
   };
 
   const handleDelete = () => {
@@ -107,7 +99,7 @@ export default function ProjectsPage() {
               <button 
                 onClick={() => {
                   setEditingProject(null);
-                  setIsModalOpen(true);
+                  setIsDrawerOpen(true);
                 }}
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
               >
@@ -128,45 +120,29 @@ export default function ProjectsPage() {
                 </div>
                 
                 {isAdmin && (
-                  <div className="relative">
+                  <div className="flex items-center gap-2">
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
-                        setActiveMenu(activeMenu === project.id ? null : project.id);
+                        setEditingProject(project);
+                        setIsDrawerOpen(true);
                       }}
-                      className="rounded-full p-1 text-[#adb5bd] hover:bg-[#f8f8fb] hover:text-[#343a40] transition-all cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white transition-all cursor-pointer"
                     >
-                      <MoreVertical size={18} />
+                      <Edit size={14} />
+                      Edit
                     </button>
-                    
-                    {activeMenu === project.id && (
-                      <div className="absolute right-0 z-10 mt-2 w-32 rounded-lg border border-[#eff2f7] bg-white py-1 shadow-lg animate-in fade-in zoom-in-95 duration-150">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingProject(project);
-                            setIsModalOpen(true);
-                            setActiveMenu(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-bold text-[#343a40] hover:bg-[#f8f8fb] hover:text-primary transition-all"
-                        >
-                          <Edit size={14} />
-                          Edit
-                        </button>
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProjectToDelete(project.id);
-                            setIsConfirmOpen(true);
-                            setActiveMenu(null);
-                          }}
-                          className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-bold text-danger hover:bg-danger/5 transition-all"
-                        >
-                          <Trash2 size={14} />
-                          Delete
-                        </button>
-                      </div>
-                    )}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setProjectToDelete(project.id);
+                        setIsConfirmOpen(true);
+                      }}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all cursor-pointer"
+                    >
+                      <Trash2 size={14} />
+                      Delete
+                    </button>
                   </div>
                 )}
               </div>
@@ -198,19 +174,53 @@ export default function ProjectsPage() {
           ))}
         </div>
 
-        {/* Create/Edit Modal */}
-        <Modal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
-          title={editingProject ? 'Edit Project' : 'Create New Project'}
+        {/* Create/Edit SideDrawer */}
+        <SideDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => {
+            setIsDrawerOpen(false);
+            setEditingProject(null);
+          }}
+          title={editingProject ? 'Edit Project' : 'New Project'}
+          subtitle={editingProject ? `Updating ${editingProject.name}` : 'Define the project scope and key details.'}
+          formKey={editingProject ? `edit-${editingProject.id}` : 'create-project'}
+          onSubmit={handleDrawerSubmit}
+          submitLabel={editingProject ? 'Update Project' : 'Create Project'}
         >
-          <ProjectForm 
-            initialData={editingProject}
-            onSubmit={editingProject ? handleUpdate : handleCreate}
-            isLoading={createMutation.isPending || updateMutation.isPending}
-            onCancel={() => setIsModalOpen(false)}
+          <DrawerInput 
+            name="name" 
+            label="Project Name" 
+            placeholder="e.g., Marketing Campaign 2024" 
+            isRequired 
+            defaultValue={editingProject?.name}
           />
-        </Modal>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <DrawerSelect 
+              name="status" 
+              label="Initial Status" 
+              defaultValue={editingProject?.status || 'ACTIVE'}
+              options={[
+                { label: 'Active', value: 'ACTIVE' },
+                { label: 'On Hold', value: 'ON_HOLD' },
+                { label: 'Completed', value: 'COMPLETED' },
+              ]}
+            />
+            <DrawerInput 
+              name="dueDate" 
+              label="End Date" 
+              type="date"
+              defaultValue={editingProject?.dueDate ? new Date(editingProject.dueDate).toISOString().split('T')[0] : ''}
+            />
+          </div>
+
+          <DrawerTextarea 
+            name="description" 
+            label="Project Vision" 
+            placeholder="Describe the goals and objectives of this project..." 
+            defaultValue={editingProject?.description}
+          />
+        </SideDrawer>
 
         <ConfirmModal
           isOpen={isConfirmOpen}

@@ -12,19 +12,22 @@ import {
   MoreVertical,
   Plus,
   Loader2,
-  X
+  X,
+  Edit,
+  Trash2,
+  User as UserIcon
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
-import { useProjectDetails, useProjectTasks } from "@/hooks/useData";
+import { SideDrawer, DrawerInput, DrawerSelect, DrawerTextarea } from "@/components/ui/SideDrawer";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTasks, useCreateTask, useProjects, useProjectDetails, useProjectTasks, useUpdateTask, useDeleteTask } from "@/hooks/useData";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { useAuth } from "@/context/AuthContext";
 import { Skeleton, CardSkeleton, TableRowSkeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
 import { useState } from "react";
-import { Modal } from "@/components/ui/Modal";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import api from "@/lib/api";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export default function ProjectDetailsPage() {
   const params = useParams();
@@ -34,27 +37,58 @@ export default function ProjectDetailsPage() {
   const queryClient = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<'tasks' | 'members'>('tasks');
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [memberEmail, setMemberEmail] = useState('');
+  const [isMemberDrawerOpen, setIsMemberDrawerOpen] = useState(false);
+  const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [memberToRemove, setMemberToRemove] = useState<{ id: string, name: string } | null>(null);
 
   const { data: project, isLoading: projectLoading } = useProjectDetails(id);
   const { data: tasks, isLoading: tasksLoading } = useProjectTasks(id);
+  const { data: projects } = useProjects();
+  
+  const createMutation = useCreateTask();
+  const updateMutation = useUpdateTask();
+  const deleteMutation = useDeleteTask();
+
+  const [editingTask, setEditingTask] = useState<any>(null);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  const [isTaskConfirmOpen, setIsTaskConfirmOpen] = useState(false);
 
   const addMemberMutation = useMutation({
-    mutationFn: async (email: string) => {
-      const response = await api.post(`/projects/${id}/members`, { email, role: 'MEMBER' });
+    mutationFn: async (values: any) => {
+      const response = await api.post(`/projects/${id}/members`, { email: values.email, role: 'MEMBER' });
       return response.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['project', id] });
-      setIsAddMemberOpen(false);
-      setMemberEmail('');
+      setIsMemberDrawerOpen(false);
       toast.success("Member added successfully");
     },
     onError: () => toast.error("Failed to add member")
   });
+
+  const handleTaskSubmit = async (values: any) => {
+    if (editingTask) {
+      await updateMutation.mutateAsync({ id: editingTask.id, data: values });
+      toast.success("Task updated successfully");
+    } else {
+      await createMutation.mutateAsync({ ...values, projectId: id });
+      toast.success("Task created successfully");
+    }
+    queryClient.invalidateQueries({ queryKey: ['project-tasks', id] });
+    setIsTaskDrawerOpen(false);
+    setEditingTask(null);
+  };
+
+  const handleTaskDelete = async () => {
+    if (taskToDelete) {
+      await deleteMutation.mutateAsync(taskToDelete);
+      queryClient.invalidateQueries({ queryKey: ['project-tasks', id] });
+      setIsTaskConfirmOpen(false);
+      setTaskToDelete(null);
+      toast.success("Task deleted successfully");
+    }
+  };
 
   const removeMemberMutation = useMutation({
     mutationFn: async (userId: string) => {
@@ -136,7 +170,10 @@ export default function ProjectDetailsPage() {
           </div>
           <div className="flex gap-3">
             {isAdmin && (
-              <button className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer">
+              <button 
+                onClick={() => setIsTaskDrawerOpen(true)}
+                className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
+              >
                 <Plus size={18} />
                 Add Task
               </button>
@@ -155,7 +192,7 @@ export default function ProjectDetailsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-[#343a40]">{completionRate}%</p>
-              <p className="text-sm font-medium text-[#6c757d]">Completion</p>
+              <p className="text-sm font-medium text-[#6c757d]">Completion Rate</p>
             </div>
           </div>
         </div>
@@ -174,12 +211,12 @@ export default function ProjectDetailsPage() {
                 onClick={() => setActiveTab('members')}
                 className={`text-lg font-bold transition-all cursor-pointer ${activeTab === 'members' ? 'text-primary' : 'text-[#adb5bd] hover:text-[#343a40]'}`}
               >
-                Members
+                Team Members
               </button>
             </div>
             {activeTab === 'members' && isAdmin && (
               <button 
-                onClick={() => setIsAddMemberOpen(true)}
+                onClick={() => setIsMemberDrawerOpen(true)}
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-1.5 text-xs font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
               >
                 <Plus size={14} />
@@ -193,11 +230,12 @@ export default function ProjectDetailsPage() {
               <table className="w-full text-left text-sm">
                 <thead className="bg-[#f8f8fb] text-[#6c757d]">
                   <tr>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Task</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Task Name</th>
                     <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Assignee</th>
                     <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Status</th>
                     <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Priority</th>
-                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Due</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Due Date</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#eff2f7]">
@@ -217,7 +255,7 @@ export default function ProjectDetailsPage() {
                       <td className="px-6 py-4">
                         <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                           task.status === 'DONE' ? 'bg-success/10 text-success' : 
-                          task.status === 'IN_PROGRESS' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-gray-500'
+                          task.status === 'IN_PROGRESS' ? 'bg-primary/10 text-primary' : 'bg-gray-100 text-[#6c757d]'
                         }`}>
                           {task.status.replace('_', ' ')}
                         </span>
@@ -232,6 +270,47 @@ export default function ProjectDetailsPage() {
                       </td>
                       <td className="px-6 py-4 text-[#adb5bd] font-medium">
                         {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No date'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/tasks/${task.id}`);
+                            }}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary hover:text-white transition-all"
+                          >
+                            <UserIcon size={14} />
+                            View
+                          </button>
+                          
+                          {isAdmin && (
+                            <>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTask(task);
+                                  setIsTaskDrawerOpen(true);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white transition-all"
+                              >
+                                <Edit size={14} />
+                                Edit
+                              </button>
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setTaskToDelete(task.id);
+                                  setIsTaskConfirmOpen(true);
+                                }}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all"
+                              >
+                                <Trash2 size={14} />
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -268,10 +347,11 @@ export default function ProjectDetailsPage() {
                             setMemberToRemove({ id: member.id, name: member.name });
                             setIsConfirmOpen(true);
                           }}
-                          className="p-1.5 text-[#adb5bd] hover:text-danger hover:bg-danger/5 rounded-lg transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all opacity-0 group-hover:opacity-100 cursor-pointer"
                           title="Remove Member"
                         >
-                          <X size={14} />
+                          <Trash2 size={14} />
+                          Remove
                         </button>
                       )}
                     </div>
@@ -282,48 +362,85 @@ export default function ProjectDetailsPage() {
           )}
         </div>
 
-        {/* Add Member Modal */}
-        <Modal 
-          isOpen={isAddMemberOpen} 
-          onClose={() => setIsAddMemberOpen(false)} 
-          title="Add Team Member"
+        {/* Add Member SideDrawer */}
+        <SideDrawer
+          isOpen={isMemberDrawerOpen}
+          onClose={() => setIsMemberDrawerOpen(false)}
+          title="Invite Team Member"
+          subtitle="Add a new member to the project by their email address."
+          formKey="add-member"
+          onSubmit={async (values) => {
+            await addMemberMutation.mutateAsync(values);
+          }}
+          submitLabel="Send Invitation"
         >
-          <form 
-            onSubmit={(e) => {
-              e.preventDefault();
-              addMemberMutation.mutate(memberEmail);
-            }} 
-            className="space-y-4"
-          >
-            <div>
-              <label className="block text-sm font-bold text-[#343a40] mb-1.5">Member Email</label>
-              <input 
-                type="email" 
-                required
-                value={memberEmail}
-                onChange={(e) => setMemberEmail(e.target.value)}
-                className="w-full rounded-lg border border-[#e9ebec] bg-white px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/10 transition-all"
-                placeholder="colleague@company.com"
-              />
-            </div>
-            <div className="flex justify-end gap-3 pt-4 border-t border-[#eff2f7]">
-              <button 
-                type="button"
-                onClick={() => setIsAddMemberOpen(false)}
-                className="px-4 py-2 text-sm font-bold text-[#6c757d] hover:text-[#343a40] cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button 
-                type="submit"
-                disabled={addMemberMutation.isPending}
-                className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer disabled:opacity-70"
-              >
-                {addMemberMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Invite Member'}
-              </button>
-            </div>
-          </form>
-        </Modal>
+          <DrawerInput 
+            name="email" 
+            label="Member Email" 
+            type="email" 
+            placeholder="colleague@company.com" 
+            isRequired 
+          />
+        </SideDrawer>
+
+        {/* Create Task SideDrawer */}
+        <SideDrawer
+          isOpen={isTaskDrawerOpen}
+          onClose={() => {
+            setIsTaskDrawerOpen(false);
+            setEditingTask(null);
+          }}
+          title={editingTask ? 'Edit Task' : 'Create New Task'}
+          subtitle={editingTask ? `Updating ${editingTask.title}` : 'Add a new task to this project.'}
+          formKey={editingTask ? `edit-task-${editingTask.id}` : 'create-project-task'}
+          onSubmit={handleTaskSubmit}
+          submitLabel={editingTask ? 'Update Task' : 'Create Task'}
+        >
+          <DrawerInput 
+            name="title" 
+            label="Task Title" 
+            placeholder="e.g., Design homepage mockup" 
+            isRequired 
+            defaultValue={editingTask?.title}
+          />
+          
+          <div className="grid grid-cols-2 gap-4">
+            <DrawerSelect 
+              name="priority" 
+              label="Priority" 
+              defaultValue={editingTask?.priority || 'MEDIUM'}
+              options={[
+                { label: 'Low', value: 'LOW' },
+                { label: 'Medium', value: 'MEDIUM' },
+                { label: 'High', value: 'HIGH' },
+                { label: 'Urgent', value: 'URGENT' },
+              ]}
+            />
+            <DrawerInput 
+              name="dueDate" 
+              label="Due Date" 
+              type="date"
+              defaultValue={editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : ''}
+            />
+          </div>
+
+          <DrawerTextarea 
+            name="description" 
+            label="Description" 
+            placeholder="What needs to be done?" 
+            defaultValue={editingTask?.description}
+          />
+        </SideDrawer>
+
+        <ConfirmModal
+          isOpen={isTaskConfirmOpen}
+          onClose={() => setIsTaskConfirmOpen(false)}
+          onConfirm={handleTaskDelete}
+          title="Delete Task"
+          message="Are you sure you want to delete this task? This action cannot be undone."
+          isLoading={deleteMutation.isPending}
+        />
+
         <ConfirmModal
           isOpen={isConfirmOpen}
           onClose={() => setIsConfirmOpen(false)}

@@ -12,34 +12,49 @@ import {
   Flag,
   Edit,
   Trash2,
-  Loader2,
   User
 } from "lucide-react";
 import { useState } from 'react';
-import { useTasks, useCreateTask, useUpdateTask, useDeleteTask } from '@/hooks/useData';
-import { Modal } from '@/components/ui/Modal';
-import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { TaskForm } from '@/components/tasks/TaskForm';
+import { SideDrawer, DrawerInput, DrawerSelect, DrawerTextarea, DrawerToggle } from '@/components/ui/SideDrawer';
+import { useTasks, useCreateTask, useUpdateTask, useDeleteTask, useProjects } from '@/hooks/useData';
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from 'next/navigation';
 import { Skeleton, TableRowSkeleton } from "@/components/ui/Skeleton";
 import { toast } from "sonner";
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 
 export default function TasksPage() {
   const router = useRouter();
   const { isAdmin } = useAuth();
-  const { data: tasks, isLoading: tasksLoading } = useTasks();
+  // Filter State
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('');
+  const [projectIdFilter, setProjectIdFilter] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+
+  const { data: tasks, isLoading: tasksLoading } = useTasks({
+    status: statusFilter || undefined,
+    priority: priorityFilter || undefined,
+    projectId: projectIdFilter || undefined,
+  });
+  
+  const { data: projects } = useProjects();
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
   const deleteMutation = useDeleteTask();
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [editingTask, setEditingTask] = useState<any>(null);
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'TODO' | 'IN_PROGRESS' | 'DONE'>('ALL');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Filter tasks locally for search
+  const filteredTasks = tasks?.data?.filter((t: any) => 
+    t.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (tasksLoading) {
     return (
@@ -61,25 +76,15 @@ export default function TasksPage() {
     );
   }
 
-  const handleCreate = (data: any) => {
-    createMutation.mutate(data, {
-      onSuccess: () => {
-        setIsModalOpen(false);
-        toast.success("Task created successfully!");
-      },
-      onError: () => toast.error("Failed to create task"),
-    });
-  };
-
-  const handleUpdate = (data: any) => {
-    updateMutation.mutate({ id: editingTask.id, data }, {
-      onSuccess: () => {
-        setIsModalOpen(false);
-        setEditingTask(null);
-        toast.success("Task updated successfully!");
-      },
-      onError: () => toast.error("Failed to update task"),
-    });
+  const handleDrawerSubmit = async (values: any) => {
+    if (editingTask) {
+      await updateMutation.mutateAsync({ id: editingTask.id, data: values });
+      toast.success("Task updated successfully!");
+    } else {
+      await createMutation.mutateAsync(values);
+      toast.success("Task created successfully!");
+    }
+    setIsDrawerOpen(false);
   };
 
   const handleDelete = () => {
@@ -112,10 +117,7 @@ export default function TasksPage() {
     }
   };
 
-  const filteredTasks = tasks?.data?.filter((task: any) => {
-    if (statusFilter === 'ALL') return true;
-    return task.status === statusFilter;
-  }) || [];
+
 
 
   return (
@@ -128,49 +130,81 @@ export default function TasksPage() {
             <p className="text-sm text-[#6c757d]">Keep track of your assigned work and deadlines</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative">
-              <button 
-                onClick={() => setIsFilterOpen(!isFilterOpen)}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-semibold transition-all cursor-pointer ${isFilterOpen ? 'border-primary bg-primary/5 text-primary' : 'border-[#e9ebec] bg-white text-[#343a40] hover:bg-[#f8f8fb]'}`}
-              >
-                <Filter size={16} />
-                {statusFilter === 'ALL' ? 'Filter' : statusFilter.replace('_', ' ')}
-              </button>
-              
-              {isFilterOpen && (
-                <div className="absolute right-0 z-10 mt-2 w-48 rounded-xl border border-[#eff2f7] bg-white p-2 shadow-xl animate-in fade-in zoom-in-95 duration-150">
-                  {['ALL', 'TODO', 'IN_PROGRESS', 'DONE'].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => {
-                        setStatusFilter(status as any);
-                        setIsFilterOpen(false);
-                      }}
-                      className={`flex w-full items-center gap-2 px-3 py-2 text-xs font-bold rounded-lg transition-all ${statusFilter === status ? 'bg-primary/10 text-primary' : 'text-[#6c757d] hover:bg-[#f8f8fb] hover:text-[#343a40]'}`}
-                    >
-                      {status === 'ALL' && <CheckSquare size={14} />}
-                      {status === 'TODO' && <AlertCircle size={14} />}
-                      {status === 'IN_PROGRESS' && <Clock size={14} />}
-                      {status === 'DONE' && <CheckCircle2 size={14} />}
-                      {status.replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
-              )}
+            <div className="relative hidden lg:block">
+              <input 
+                type="text" 
+                placeholder="Search tasks..." 
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-64 rounded-xl border border-[#e9ebec] bg-white px-4 py-2.5 text-sm font-medium outline-none focus:ring-4 focus:ring-primary/10 focus:border-primary transition-all"
+              />
             </div>
             {isAdmin && (
               <button 
                 onClick={() => {
                   setEditingTask(null);
-                  setIsModalOpen(true);
+                  setIsDrawerOpen(true);
                 }}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-white shadow-md shadow-primary/20 hover:bg-primary/90 transition-all cursor-pointer"
+                className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-xl shadow-primary/20 hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
               >
                 <Plus size={18} />
                 New Task
               </button>
             )}
           </div>
+        </div>
+
+        {/* Filters Bar */}
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2 rounded-xl border border-[#e9ebec] bg-white p-1.5 shadow-sm">
+            <button 
+              onClick={() => setStatusFilter('')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === '' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-[#6c757d] hover:bg-[#f8f8fb]'}`}
+            >
+              All
+            </button>
+            <button 
+              onClick={() => setStatusFilter('TODO')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === 'TODO' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-[#6c757d] hover:bg-[#f8f8fb]'}`}
+            >
+              To Do
+            </button>
+            <button 
+              onClick={() => setStatusFilter('IN_PROGRESS')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === 'IN_PROGRESS' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-[#6c757d] hover:bg-[#f8f8fb]'}`}
+            >
+              In Progress
+            </button>
+            <button 
+              onClick={() => setStatusFilter('DONE')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${statusFilter === 'DONE' ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'text-[#6c757d] hover:bg-[#f8f8fb]'}`}
+            >
+              Completed
+            </button>
+          </div>
+
+          <select 
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            className="rounded-xl border border-[#e9ebec] bg-white px-4 py-2.5 text-xs font-bold text-[#343a40] outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer"
+          >
+            <option value="">Any Priority</option>
+            <option value="URGENT">Urgent</option>
+            <option value="HIGH">High</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="LOW">Low</option>
+          </select>
+
+          <select 
+            value={projectIdFilter}
+            onChange={(e) => setProjectIdFilter(e.target.value)}
+            className="rounded-xl border border-[#e9ebec] bg-white px-4 py-2.5 text-xs font-bold text-[#343a40] outline-none focus:ring-4 focus:ring-primary/10 transition-all cursor-pointer max-w-[200px]"
+          >
+            <option value="">All Projects</option>
+            {projects?.data?.map((p: any) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
         </div>
 
         {/* Task List Table */}
@@ -223,59 +257,43 @@ export default function TasksPage() {
                       {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : "No Date"}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="relative">
+                      <div className="flex items-center gap-2">
                         <button 
                           onClick={(e) => {
                             e.stopPropagation();
-                            setActiveMenu(activeMenu === task.id ? null : task.id);
+                            router.push(`/tasks/${task.id}`);
                           }}
-                          className="h-8 w-8 rounded-full flex items-center justify-center text-[#adb5bd] hover:bg-[#f8f8fb] hover:text-[#343a40] transition-all cursor-pointer"
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-primary bg-primary/5 hover:bg-primary hover:text-white transition-all"
                         >
-                          <MoreVertical size={16} />
+                          <User size={14} />
+                          View
                         </button>
                         
-                        {activeMenu === task.id && (
-                          <div className="absolute right-0 z-10 mt-2 w-32 rounded-lg border border-[#eff2f7] bg-white py-1 shadow-lg animate-in fade-in zoom-in-95 duration-150">
-                            {isAdmin && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingTask(task);
-                                  setIsModalOpen(true);
-                                  setActiveMenu(null);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-bold text-[#343a40] hover:bg-[#f8f8fb] hover:text-primary transition-all"
-                              >
-                                <Edit size={14} />
-                                Edit
-                              </button>
-                            )}
+                        {isAdmin && (
+                          <>
                             <button 
                               onClick={(e) => {
                                 e.stopPropagation();
-                                router.push(`/tasks/${task.id}`);
-                                setActiveMenu(null);
+                                setEditingTask(task);
+                                setIsDrawerOpen(true);
                               }}
-                              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-bold text-[#343a40] hover:bg-[#f8f8fb] hover:text-primary transition-all"
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white transition-all"
                             >
-                              <User size={14} />
-                              View
+                              <Edit size={14} />
+                              Edit
                             </button>
-                            {isAdmin && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setTaskToDelete(task.id);
-                                  setIsConfirmOpen(true);
-                                  setActiveMenu(null);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-1.5 text-xs font-bold text-danger hover:bg-danger/5 transition-all"
-                              >
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
-                            )}
-                          </div>
+                            <button 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setTaskToDelete(task.id);
+                                setIsConfirmOpen(true);
+                              }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all"
+                            >
+                              <Trash2 size={14} />
+                              Delete
+                            </button>
+                          </>
                         )}
                       </div>
                     </td>
@@ -295,19 +313,74 @@ export default function TasksPage() {
           )}
         </div>
 
-        {/* Create/Edit Modal */}
-        <Modal 
-          isOpen={isModalOpen} 
-          onClose={() => setIsModalOpen(false)} 
+        {/* Create/Edit SideDrawer */}
+        <SideDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => {
+            setIsDrawerOpen(false);
+            setEditingTask(null);
+          }}
           title={editingTask ? 'Edit Task' : 'Create New Task'}
+          subtitle={editingTask ? `Updating ${editingTask.title}` : 'Fill in the details to create a new task.'}
+          formKey={editingTask ? `edit-${editingTask.id}` : 'create-task'}
+          onSubmit={handleDrawerSubmit}
+          submitLabel={editingTask ? 'Update Task' : 'Create Task'}
         >
-          <TaskForm 
-            initialData={editingTask}
-            onSubmit={editingTask ? handleUpdate : handleCreate}
-            isLoading={createMutation.isPending || updateMutation.isPending}
-            onCancel={() => setIsModalOpen(false)}
+          <DrawerInput 
+            name="title" 
+            label="Task Title" 
+            placeholder="e.g., Design homepage mockup" 
+            isRequired 
+            defaultValue={editingTask?.title}
           />
-        </Modal>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <DrawerSelect 
+              name="projectId" 
+              label="Project" 
+              isRequired
+              defaultValue={editingTask?.projectId}
+              options={projects?.data?.map((p: any) => ({ label: p.name, value: p.id })) || []}
+            />
+            <DrawerSelect 
+              name="priority" 
+              label="Priority" 
+              defaultValue={editingTask?.priority || 'MEDIUM'}
+              options={[
+                { label: 'Low', value: 'LOW' },
+                { label: 'Medium', value: 'MEDIUM' },
+                { label: 'High', value: 'HIGH' },
+                { label: 'Urgent', value: 'URGENT' },
+              ]}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <DrawerSelect 
+              name="status" 
+              label="Status" 
+              defaultValue={editingTask?.status || 'TODO'}
+              options={[
+                { label: 'To Do', value: 'TODO' },
+                { label: 'In Progress', value: 'IN_PROGRESS' },
+                { label: 'Done', value: 'DONE' },
+              ]}
+            />
+            <DrawerInput 
+              name="dueDate" 
+              label="Due Date" 
+              type="date"
+              defaultValue={editingTask?.dueDate ? new Date(editingTask.dueDate).toISOString().split('T')[0] : ''}
+            />
+          </div>
+
+          <DrawerTextarea 
+            name="description" 
+            label="Description" 
+            placeholder="What needs to be done?" 
+            defaultValue={editingTask?.description}
+          />
+        </SideDrawer>
 
         <ConfirmModal
           isOpen={isConfirmOpen}

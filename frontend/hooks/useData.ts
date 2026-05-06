@@ -43,10 +43,10 @@ export function useProjectTasks(id: string) {
   });
 }
 
-export function useTasks() {
+export function useTasks(params?: any) {
   return useQuery({
-    queryKey: ['tasks'],
-    queryFn: taskService.getAll,
+    queryKey: ['tasks', params],
+    queryFn: () => taskService.getAll(params),
   });
 }
 

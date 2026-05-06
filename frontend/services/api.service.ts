@@ -35,8 +35,8 @@ export const projectService = {
 };
 
 export const taskService = {
-  getAll: async () => {
-    const response = await api.get('/tasks');
+  getAll: async (params?: any) => {
+    const response = await api.get('/tasks', { params });
     return response.data;
   },
   create: async (data: any) => {
