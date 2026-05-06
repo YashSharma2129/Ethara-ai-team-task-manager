@@ -6,8 +6,9 @@ Built as a simplified version of tools like **Trello** and **Asana**.
 
 ## 🖥️ Live Demo
 
-- **Frontend**: [Deployed URL]
-- **Backend API**: [Deployed URL]
+- **Frontend**: [https://ethara-ai-team-task-manager-iota.vercel.app](https://ethara-ai-team-task-manager-iota.vercel.app)
+- **Backend API**: [https://ethara-ai-team-task-manager.onrender.com](https://ethara-ai-team-task-manager.onrender.com)
+- **API Docs (Swagger)**: [https://ethara-ai-team-task-manager.onrender.com/api/docs](https://ethara-ai-team-task-manager.onrender.com/api/docs)
 
 **Demo Credentials:**
 
