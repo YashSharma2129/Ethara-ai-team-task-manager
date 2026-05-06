@@ -245,30 +245,38 @@ The app will be running at `http://localhost:3001`.
 
 ---
 
-## 🚀 Deployment (Railway)
+## 🚀 Deployment (Render)
 
-### Backend
+### Backend (Web Service)
 
-1. Create a new Railway project
-2. Add a **PostgreSQL** plugin
-3. Connect your GitHub repo and select the `backend` directory
-4. Set environment variables:
-   - `DATABASE_URL` → from Railway PostgreSQL plugin
+1. Create a new **Web Service** on [Render](https://render.com)
+2. Connect your GitHub repo
+3. Set **Root Directory**: `backend`
+4. **Build Command**: `yarn install && npx prisma generate && npx prisma migrate deploy && yarn build`
+5. **Start Command**: `yarn start:prod`
+6. Set **Environment Variables**:
+   - `DATABASE_URL` → from Render PostgreSQL instance
    - `JWT_SECRET` → your secret key
    - `JWT_EXPIRES_IN` → `7d`
    - `PORT` → `3000`
    - `NODE_ENV` → `production`
-5. Build command: `yarn install && npx prisma migrate deploy && yarn build`
-6. Start command: `yarn start:prod`
+   - `CORS_ORIGIN` → your frontend Render URL
 
-### Frontend
+### Frontend (Static Site or Web Service)
 
-1. Add another service in the same Railway project
-2. Connect your GitHub repo and select the `frontend` directory
-3. Set environment variables:
+1. Create another **Web Service** on Render
+2. Connect your GitHub repo
+3. Set **Root Directory**: `frontend`
+4. **Build Command**: `npm install && npm run build`
+5. **Start Command**: `npm start`
+6. Set **Environment Variables**:
    - `NEXT_PUBLIC_API_URL` → your deployed backend URL + `/api/v1`
-4. Build command: `npm install && npm run build`
-5. Start command: `npm start`
+
+### Database
+
+1. Create a **PostgreSQL** instance on Render
+2. Copy the **Internal Database URL** and set it as `DATABASE_URL` in your backend service
+3. After first deploy, seed the database: connect via terminal and run `yarn run seed`
 
 ---
 

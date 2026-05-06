@@ -10,8 +10,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // 1. Global API Prefix
-  app.setGlobalPrefix('api/v1');
+  // 1. Global API Prefix (exclude root health/info endpoints)
+  app.setGlobalPrefix('api/v1', {
+    exclude: ['/', 'health'],
+  });
 
   // 2. Swagger API Documentation
   const config = new DocumentBuilder()
