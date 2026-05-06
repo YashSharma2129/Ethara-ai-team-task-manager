@@ -1,0 +1,144 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { dashboardService, projectService, taskService, authService, userService } from '@/services/api.service';
+
+// ... (previous code)
+
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: userService.updateProfile,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['me'] });
+    },
+  });
+}
+
+export function useDashboard() {
+  return useQuery({
+    queryKey: ['dashboard'],
+    queryFn: dashboardService.getStats,
+  });
+}
+
+export function useProjects() {
+  return useQuery({
+    queryKey: ['projects'],
+    queryFn: projectService.getAll,
+  });
+}
+
+export function useProjectDetails(id: string) {
+  return useQuery({
+    queryKey: ['project', id],
+    queryFn: () => projectService.getById(id),
+    enabled: !!id,
+  });
+}
+
+export function useProjectTasks(id: string) {
+  return useQuery({
+    queryKey: ['project-tasks', id],
+    queryFn: () => projectService.getTasks(id),
+    enabled: !!id,
+  });
+}
+
+export function useTasks() {
+  return useQuery({
+    queryKey: ['tasks'],
+    queryFn: taskService.getAll,
+  });
+}
+
+export function useMe() {
+  return useQuery({
+    queryKey: ['me'],
+    queryFn: authService.getMe,
+    retry: false,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+// --- PROJECTS ---
+export function useCreateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: projectService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+export function useUpdateProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => projectService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+    },
+  });
+}
+
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: projectService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+// --- TASKS ---
+export function useCreateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: taskService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => taskService.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+    },
+  });
+}
+
+export function useDeleteTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: taskService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+}
+
+// --- USERS ---
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: userService.getAll,
+  });
+}
+
+export function useDeleteUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: userService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+    },
+  });
+}
