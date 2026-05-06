@@ -35,9 +35,12 @@ export class CreateTaskDto {
   status?: TaskStatus;
 
   @IsOptional()
-  @Transform(({ value }: { value: string | null | undefined }) =>
-    value && value.trim() !== '' ? new Date(value) : null,
-  )
+  @Transform(({ value }: { value: any }) => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'string' && value.trim() !== '') return new Date(value);
+    return null;
+  })
   @IsDate()
   dueDate?: Date;
 
