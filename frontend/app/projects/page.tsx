@@ -54,6 +54,12 @@ export default function ProjectsPage() {
           setProjectToDelete(null);
           toast.success("Project deleted successfully");
         },
+        onError: (error: any) => {
+          const message = error.response?.data?.message || "Failed to delete project";
+          toast.error(message);
+          setIsConfirmOpen(false);
+          setProjectToDelete(null);
+        }
       });
     }
   };
@@ -119,32 +125,42 @@ export default function ProjectsPage() {
                   <FolderKanban size={24} />
                 </div>
                 
-                {isAdmin && (
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingProject(project);
-                        setIsDrawerOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white transition-all cursor-pointer"
-                    >
-                      <Edit size={14} />
-                      Edit
-                    </button>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setProjectToDelete(project.id);
-                        setIsConfirmOpen(true);
-                      }}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all cursor-pointer"
-                    >
-                      <Trash2 size={14} />
-                      Delete
-                    </button>
-                  </div>
-                )}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={(e) => {
+                      if (!isAdmin) return;
+                      e.stopPropagation();
+                      setEditingProject(project);
+                      setIsDrawerOpen(true);
+                    }}
+                    disabled={!isAdmin}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all shadow-sm
+                      ${isAdmin 
+                        ? 'text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white cursor-pointer' 
+                        : 'text-[#adb5bd] bg-[#f8f8fb] cursor-not-allowed opacity-60'}`}
+                    title={!isAdmin ? "Only admins can edit projects" : ""}
+                  >
+                    <Edit size={14} />
+                    Edit
+                  </button>
+                  <button 
+                    onClick={(e) => {
+                      if (!isAdmin) return;
+                      e.stopPropagation();
+                      setProjectToDelete(project.id);
+                      setIsConfirmOpen(true);
+                    }}
+                    disabled={!isAdmin}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all shadow-sm
+                      ${isAdmin 
+                        ? 'text-danger bg-danger/5 hover:bg-danger hover:text-white cursor-pointer' 
+                        : 'text-[#adb5bd] bg-[#f8f8fb] cursor-not-allowed opacity-60'}`}
+                    title={!isAdmin ? "Only admins can delete projects" : ""}
+                  >
+                    <Trash2 size={14} />
+                    Delete
+                  </button>
+                </div>
               </div>
 
               <div 

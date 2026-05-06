@@ -22,7 +22,7 @@ import { ProjectsService } from './projects.service';
 @Controller('projects')
 @UseGuards(JwtAuthGuard)
 export class ProjectsController {
-  constructor(private readonly projectsService: ProjectsService) {}
+  constructor(private readonly projectsService: ProjectsService) { }
 
   @Post()
   @ApiOperation({ summary: 'Create a new project' })
@@ -74,7 +74,7 @@ export class ProjectsController {
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete project (admin only)' })
-  delete(@Param('id') id: string, @CurrentUser() user: { userId: string }) {
-    return this.projectsService.delete(id, user.userId);
+  delete(@Param('id') id: string, @CurrentUser() user: { userId: string; role: Role }) {
+    return this.projectsService.delete(id, user.userId, user.role);
   }
 }

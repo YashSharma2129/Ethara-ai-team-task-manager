@@ -11,7 +11,6 @@ import {
   Shield, 
   User as UserIcon,
   Search,
-  MoreVertical,
   AlertCircle
 } from "lucide-react";
 import { useState } from "react";

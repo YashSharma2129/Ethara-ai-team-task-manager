@@ -238,17 +238,21 @@ export class ProjectsService {
   /**
    * Deletes a project. Only allowed for project admin.
    */
-  async delete(projectId: string, adminId: string) {
+  async delete(projectId: string, userId: string, role?: Role) {
     const project = await this.prisma.project.findUnique({
       where: { id: projectId },
     });
 
     if (!project) throw new NotFoundException('Project not found');
-    if (project.adminId !== adminId) {
+    
+    const isProjectAdmin = project.adminId === userId;
+    const isGlobalAdmin = role === Role.ADMIN;
+
+    if (!isProjectAdmin && !isGlobalAdmin) {
       throw new ForbiddenException('Only project admins can delete projects');
     }
 
-    this.logger.log(`Project ${projectId} deleted by admin ${adminId}`);
+    this.logger.log(`Project ${projectId} deleted by ${isGlobalAdmin ? 'Global Admin' : 'Project Admin'} ${userId}`);
 
     return this.prisma.project.delete({
       where: { id: projectId },

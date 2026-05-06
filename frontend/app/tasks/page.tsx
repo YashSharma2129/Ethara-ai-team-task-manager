@@ -95,7 +95,12 @@ export default function TasksPage() {
           setTaskToDelete(null);
           toast.success("Task deleted successfully!");
         },
-        onError: () => toast.error("Failed to delete task"),
+        onError: (error: any) => {
+          const message = error.response?.data?.message || "Failed to delete task";
+          toast.error(message);
+          setIsConfirmOpen(false);
+          setTaskToDelete(null);
+        },
       });
     }
   };
@@ -269,32 +274,40 @@ export default function TasksPage() {
                           View
                         </button>
                         
-                        {isAdmin && (
-                          <>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingTask(task);
-                                setIsDrawerOpen(true);
-                              }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white transition-all"
-                            >
-                              <Edit size={14} />
-                              Edit
-                            </button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setTaskToDelete(task.id);
-                                setIsConfirmOpen(true);
-                              }}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest text-danger bg-danger/5 hover:bg-danger hover:text-white transition-all"
-                            >
-                              <Trash2 size={14} />
-                              Delete
-                            </button>
-                          </>
-                        )}
+                        <button 
+                          onClick={(e) => {
+                            if (!isAdmin) return;
+                            e.stopPropagation();
+                            setEditingTask(task);
+                            setIsDrawerOpen(true);
+                          }}
+                          disabled={!isAdmin}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all
+                            ${isAdmin 
+                              ? 'text-[#343a40] bg-[#f8f8fb] hover:bg-primary hover:text-white cursor-pointer' 
+                              : 'text-[#adb5bd] bg-[#f8f8fb] cursor-not-allowed opacity-60'}`}
+                          title={!isAdmin ? "Only admins can edit tasks" : ""}
+                        >
+                          <Edit size={14} />
+                          Edit
+                        </button>
+                        <button 
+                          onClick={(e) => {
+                            if (!isAdmin) return;
+                            e.stopPropagation();
+                            setTaskToDelete(task.id);
+                            setIsConfirmOpen(true);
+                          }}
+                          disabled={!isAdmin}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all
+                            ${isAdmin 
+                              ? 'text-danger bg-danger/5 hover:bg-danger hover:text-white cursor-pointer' 
+                              : 'text-[#adb5bd] bg-[#f8f8fb] cursor-not-allowed opacity-60'}`}
+                          title={!isAdmin ? "Only admins can delete tasks" : ""}
+                        >
+                          <Trash2 size={14} />
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
