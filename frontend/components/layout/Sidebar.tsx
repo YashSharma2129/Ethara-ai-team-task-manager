@@ -195,7 +195,7 @@ export function Sidebar({ collapsed = false, mobileOpen = false, onCloseMobile }
           }`}
         >
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-white shadow-md shadow-black/20">
-            <Flower2 size={17} className="text-[#1a3353]" />
+            <img src="/icon.svg" alt="Logo" width={17} height={17} />
           </div>
 
           {isExpanded && (

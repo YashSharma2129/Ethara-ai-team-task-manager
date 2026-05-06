@@ -54,7 +54,7 @@ export default function SignupPage() {
         <div className="relative z-10 max-w-lg">
           <div className="flex items-center gap-3 mb-8">
             <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center shadow-2xl">
-              <Flower2 size={28} className="text-[#1a3353]" />
+              <img src="/icon.svg" alt="Logo" width={28} height={28} />
             </div>
             <div className="flex flex-col">
               <span className="text-xs font-bold uppercase tracking-[0.3em] text-white/60 leading-tight">Ethara AI</span>
