@@ -213,43 +213,43 @@ export default function KanbanPage() {
                                 </div>
 
                                 {/* Actions */}
-                                <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
+                                <div className="mt-4 flex items-center justify-start gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
                                    <button 
                                      onClick={(e) => { e.stopPropagation(); router.push(`/tasks/${t.id}`); }}
-                                     className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-primary transition-all"
+                                     className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-primary transition-all"
                                      title="View Details"
                                    >
-                                     <Eye size={14} />
+                                     <Eye size={12} />
                                    </button>
                                    
                                    {isAdmin || t.project?.adminId === user?.id ? (
                                      <>
                                        <button 
                                          onClick={(e) => { e.stopPropagation(); setEditingTask(t); setIsDrawerOpen(true); }}
-                                         className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-[#343a40] transition-all"
+                                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-[#343a40] transition-all"
                                          title="Edit Task"
                                        >
-                                         <Edit size={14} />
+                                         <Edit size={12} />
                                        </button>
                                        <button 
                                          onClick={(e) => { e.stopPropagation(); setTaskToDelete(t.id); setIsConfirmOpen(true); }}
-                                         className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:bg-danger/5 hover:text-danger transition-all"
+                                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:bg-danger/5 hover:text-danger transition-all"
                                          title="Delete Task"
                                        >
-                                         <Trash2 size={14} />
+                                         <Trash2 size={12} />
                                        </button>
                                      </>
                                    ) : (
                                      <div className="relative group/tooltip">
                                        <button 
                                          disabled
-                                         className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd]/30 shadow-sm cursor-not-allowed"
+                                         className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-[#eff2f7] text-[#adb5bd]/30 shadow-sm cursor-not-allowed"
                                        >
-                                         <Trash2 size={14} />
+                                         <Trash2 size={12} />
                                        </button>
-                                       <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#0f2440] px-3 py-1.5 text-[10px] font-bold text-white opacity-0 transition-all group-hover/tooltip:opacity-100 z-[110] shadow-xl">
+                                       <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0f2440] px-3 py-1.5 text-[10px] font-bold text-white opacity-0 transition-all group-hover/tooltip:opacity-100 z-[110] shadow-xl">
                                          Only project admins can manage
-                                         <span className="absolute left-full top-1/2 -translate-y-1/2 border-[4px] border-transparent border-l-[#0f2440]" />
+                                         <span className="absolute left-1/2 top-full -translate-x-1/2 border-[4px] border-transparent border-t-[#0f2440]" />
                                        </span>
                                      </div>
                                    )}
