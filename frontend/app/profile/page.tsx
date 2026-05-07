@@ -167,12 +167,12 @@ export default function ProfilePage() {
     <AppShell>
       <div className="mx-auto max-w-7xl px-6 py-8">
         {/* Tab Navigation */}
-        <div className="mb-8 flex items-center gap-8 border-b border-[#dee2e6]">
+        <div className="mb-8 flex items-center gap-8 overflow-x-auto no-scrollbar border-b border-[#dee2e6]">
           {TABS.map(({ id, label }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
-              className={`relative pb-3 text-sm font-semibold transition-colors ${
+              className={`relative pb-3 text-sm font-semibold transition-colors whitespace-nowrap ${
                 activeTab === id
                   ? "text-primary"
                   : "text-[#6c757d] hover:text-[#495057]"
@@ -190,7 +190,7 @@ export default function ProfilePage() {
         {activeTab === "profile" && (
           <div className="space-y-8">
             {/* Breadcrumb */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h1 className="text-2xl font-bold uppercase tracking-wide text-[#343a40]">
                 PROFILE
               </h1>
