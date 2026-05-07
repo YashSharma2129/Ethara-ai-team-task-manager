@@ -214,13 +214,6 @@ export default function KanbanPage() {
 
                                 {/* Actions */}
                                 <div className="mt-4 flex items-center justify-start gap-1.5 opacity-70 transition-opacity group-hover:opacity-100">
-                                   <button 
-                                     onClick={(e) => { e.stopPropagation(); router.push(`/tasks/${t.id}`); }}
-                                     className="flex h-7 w-7 items-center justify-center rounded-lg bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-primary transition-all"
-                                     title="View Details"
-                                   >
-                                     <Eye size={12} />
-                                   </button>
                                    
                                    {isAdmin || t.project?.adminId === user?.id ? (
                                      <>

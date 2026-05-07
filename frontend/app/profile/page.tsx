@@ -222,34 +222,6 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-              {/* Bio & Links */}
-              <div className="space-y-8">
-                <div className="rounded-[32px] border border-[#eff2f7] bg-white p-6 shadow-sm">
-                  <h4 className="mb-4 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Bio</h4>
-                  <textarea
-                    className="w-full min-h-[160px] resize-none rounded-2xl bg-[#f8f9fa] p-4 text-[13px] font-bold leading-relaxed text-[#343a40] outline-none transition-all focus:bg-white focus:ring-4 focus:ring-primary/5"
-                    value={formData.bio}
-                    onChange={(e) => set("bio", e.target.value)}
-                    placeholder="Tell us about yourself…"
-                  />
-                </div>
-
-                <div className="rounded-[32px] border border-[#eff2f7] bg-white p-6 shadow-sm">
-                  <h4 className="mb-4 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Social</h4>
-                  <Field label="LinkedIn">
-                    <div className="relative">
-                      <Link2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#adb5bd]" />
-                      <input
-                        className={`${inputCls} pl-10`}
-                        value={formData.linkedin}
-                        onChange={(e) => set("linkedin", e.target.value)}
-                        placeholder="linkedin.com/in/…"
-                      />
-                    </div>
-                  </Field>
-                </div>
-              </div>
-
               {/* Personal Details */}
               <div className="lg:col-span-2">
                 <div className="rounded-[32px] border border-[#eff2f7] bg-white p-8 shadow-sm">
@@ -309,6 +281,34 @@ export default function ProfilePage() {
                       {updateProfile.isPending ? "Saving…" : "Save Changes"}
                     </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Bio & Links */}
+              <div className="space-y-8">
+                <div className="rounded-[32px] border border-[#eff2f7] bg-white p-6 shadow-sm">
+                  <h4 className="mb-4 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Bio</h4>
+                  <textarea
+                    className="w-full min-h-[160px] resize-none rounded-2xl bg-[#f8f9fa] p-4 text-[13px] font-bold leading-relaxed text-[#343a40] outline-none transition-all focus:bg-white focus:ring-4 focus:ring-primary/5"
+                    value={formData.bio}
+                    onChange={(e) => set("bio", e.target.value)}
+                    placeholder="Tell us about yourself…"
+                  />
+                </div>
+
+                <div className="rounded-[32px] border border-[#eff2f7] bg-white p-6 shadow-sm">
+                  <h4 className="mb-4 text-[11px] font-extrabold uppercase tracking-widest text-[#adb5bd]">Social</h4>
+                  <Field label="LinkedIn">
+                    <div className="relative">
+                      <Link2 size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-[#adb5bd]" />
+                      <input
+                        className={`${inputCls} pl-10`}
+                        value={formData.linkedin}
+                        onChange={(e) => set("linkedin", e.target.value)}
+                        placeholder="linkedin.com/in/…"
+                      />
+                    </div>
+                  </Field>
                 </div>
               </div>
             </div>
