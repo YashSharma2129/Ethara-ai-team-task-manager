@@ -1,8 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dashboardService, projectService, taskService, authService, userService } from '@/services/api.service';
 
-// ... (previous code)
-
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
   return useMutation({

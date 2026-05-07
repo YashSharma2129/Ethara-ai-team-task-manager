@@ -319,7 +319,15 @@ export default function TasksPage() {
             </p>
           </div>
           <button
-            onClick={() => { setEditingTask(null); setIsDrawerOpen(true); }}
+            onClick={() => { 
+              if (projects?.data?.length === 0) {
+                toast.error("Please create a project first");
+                router.push("/projects");
+                return;
+              }
+              setEditingTask(null); 
+              setIsDrawerOpen(true); 
+            }}
             className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
           >
             <Plus size={17} />
@@ -579,16 +587,31 @@ export default function TasksPage() {
           {filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#f1f3f5] text-[#adb5bd]">
-                <CheckSquare size={28} />
+                {projects?.data?.length === 0 ? <Layout size={28} /> : <CheckSquare size={28} />}
               </div>
               <h3 className="text-base font-bold text-[#343a40]">
-                {search || statusFilter || priorityFilter ? "No tasks match" : "No tasks yet"}
+                {projects?.data?.length === 0 
+                  ? "Create a Project First"
+                  : search || statusFilter || priorityFilter 
+                    ? "No tasks match" 
+                    : "No tasks yet"}
               </h3>
-              <p className="mt-1 text-sm text-[#6c757d]">
-                {search || statusFilter || priorityFilter
-                  ? "Try adjusting your filters"
-                  : "Create your first task to get started"}
+              <p className="mt-1 mb-4 text-sm text-[#6c757d] max-w-md">
+                {projects?.data?.length === 0
+                  ? "Tasks belong to projects. You need to create a project before you can assign tasks."
+                  : search || statusFilter || priorityFilter
+                    ? "Try adjusting your filters"
+                    : "Create your first task to get started"}
               </p>
+              {projects?.data?.length === 0 && (
+                <button
+                  onClick={() => router.push("/projects")}
+                  className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+                >
+                  <Plus size={17} />
+                  New Project
+                </button>
+              )}
             </div>
           )}
         </div>

@@ -3,34 +3,26 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/context/AuthContext";
-import { authService } from "@/services/api.service";
 import { toast } from "sonner";
-import { LayoutDashboard, Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, Flower2 } from "lucide-react";
+import { Mail, ArrowLeft, Loader2, Flower2 } from "lucide-react";
 
-export default function LoginPage() {
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const data = await authService.login({ email, password });
-      login(data.accessToken, data.user);
-      toast.success("Welcome back!", {
-        description: `Logged in as ${data.user.name}`,
-      });
-      router.push("/dashboard");
-    } catch (err: any) {
-      toast.error(err.response?.data?.message || "Invalid credentials. Please try again.");
-    } finally {
+    
+    // Simulate API call
+    setTimeout(() => {
       setLoading(false);
-    }
+      toast.success("Reset link sent!", {
+        description: "If an account exists for this email, you will receive password reset instructions.",
+      });
+      router.push("/auth/login");
+    }, 1500);
   };
 
   return (
@@ -78,22 +70,22 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Side: Login Form */}
+      {/* Right Side: Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-[#f8f8fb]">
         <div className="w-full max-w-[440px]">
           <div className="lg:hidden flex items-center gap-3 mb-10">
             <div className="h-10 w-10 rounded-xl bg-[#1a3353] flex items-center justify-center shadow-lg">
-              <Flower2 size={22} className="text-white" />
+              <img src="/icon.svg" alt="Logo" width={22} height={22} />
             </div>
             <span className="text-lg font-black text-[#1a3353] tracking-tight uppercase">Ethara AI</span>
           </div>
 
           <div className="mb-10">
-            <h2 className="text-3xl font-black text-[#1a3353] mb-2">Welcome Back</h2>
-            <p className="text-[#6c757d] font-medium">Please enter your details to sign in.</p>
+            <h2 className="text-3xl font-black text-[#1a3353] mb-2">Reset Password</h2>
+            <p className="text-[#6c757d] font-medium">Enter your email address and we'll send you a link to reset your password.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
               <label className="text-sm font-bold text-[#495057] ml-1">Email Address</label>
               <div className="relative group">
@@ -111,60 +103,22 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <label className="text-sm font-bold text-[#495057]">Password</label>
-                <Link href="/auth/forgot-password" className="text-xs font-bold text-primary hover:underline">Forgot password?</Link>
-              </div>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#adb5bd] group-focus-within:text-primary transition-colors">
-                  <Lock size={18} />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  placeholder="••••••••"
-                  className="w-full pl-12 pr-12 py-3.5 rounded-2xl border border-[#eff2f7] bg-white text-sm font-medium outline-none focus:border-primary focus:ring-4 focus:ring-primary/5 transition-all shadow-sm"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#adb5bd] hover:text-[#495057] transition-colors cursor-pointer"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 px-1">
-              <input type="checkbox" id="remember" className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary" />
-              <label htmlFor="remember" className="text-sm font-bold text-[#6c757d] cursor-pointer">Keep me signed in</label>
-            </div>
-
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#1a3353] hover:bg-[#1a3353]/90 text-white font-bold py-4 rounded-2xl shadow-xl shadow-[#1a3353]/10 transition-all flex items-center justify-center gap-2 group disabled:opacity-70 cursor-pointer"
+              disabled={loading || !email}
+              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white font-bold py-4 px-6 rounded-2xl transition-all shadow-xl shadow-primary/20 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
             >
-              {loading ? (
-                <Loader2 size={20} className="animate-spin" />
-              ) : (
-                <>
-                  <span>Sign In</span>
-                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                </>
-              )}
+              {loading ? <Loader2 size={20} className="animate-spin" /> : "Send Reset Link"}
             </button>
+            
+            <div className="pt-4 text-center">
+              <Link href="/auth/login" className="inline-flex items-center gap-2 text-sm font-bold text-[#6c757d] hover:text-[#343a40] transition-colors">
+                <ArrowLeft size={16} />
+                Back to Login
+              </Link>
+            </div>
           </form>
 
-          <div className="mt-10 text-center">
-            <p className="text-sm font-bold text-[#6c757d]">
-              Don&apos;t have an account?{" "}
-              <Link href="/auth/signup" className="text-primary hover:underline">Sign up for free</Link>
-            </p>
-          </div>
         </div>
       </div>
     </div>
