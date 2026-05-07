@@ -108,7 +108,35 @@ export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => taskService.update(id, data),
-    onSuccess: () => {
+    onMutate: async ({ id, data }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['tasks'] });
+
+      // Snapshot the previous value
+      const previousTasks = queryClient.getQueryData(['tasks']);
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData({ queryKey: ['tasks'] }, (old: any) => {
+        if (!old || !old.data) return old;
+        return {
+          ...old,
+          data: old.data.map((task: any) =>
+            task.id === id ? { ...task, ...data } : task
+          ),
+        };
+      });
+
+      // Return a context object with the snapshotted value
+      return { previousTasks };
+    },
+    onError: (err, newTodo, context: any) => {
+      // If the mutation fails, use the context returned from onMutate to roll back
+      if (context?.previousTasks) {
+        queryClient.setQueriesData({ queryKey: ['tasks'] }, context.previousTasks);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after error or success to ensure we have the correct data
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
     },
   });

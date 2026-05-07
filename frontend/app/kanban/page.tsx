@@ -212,8 +212,8 @@ export default function KanbanPage() {
                                   <span className="truncate">{t.project?.name || "No Project"}</span>
                                 </div>
 
-                                {/* Actions (Always visible on hover) */}
-                                <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
+                                {/* Actions */}
+                                <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 opacity-60 transition-opacity group-hover:opacity-100">
                                    <button 
                                      onClick={(e) => { e.stopPropagation(); router.push(`/tasks/${t.id}`); }}
                                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-primary transition-all"
