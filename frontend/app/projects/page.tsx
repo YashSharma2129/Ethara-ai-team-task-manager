@@ -298,21 +298,21 @@ export default function ProjectsPage() {
               {search ? " match your search" : " total"}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center">
             {/* Search */}
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#adb5bd]" />
               <input
                 type="text"
                 placeholder="Search projects…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 w-52 rounded-xl border border-[#eff2f7] bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/8"
+                className="h-10 w-full rounded-xl border border-[#eff2f7] bg-white pl-9 pr-3 text-sm outline-none transition-all focus:border-primary/40 focus:ring-2 focus:ring-primary/8 sm:w-52"
               />
             </div>
             <button
               onClick={() => { setEditingProject(null); setIsDrawerOpen(true); }}
-              className="flex items-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-bold text-white shadow-md shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer sm:w-auto"
             >
               <Plus size={17} />
               New Project

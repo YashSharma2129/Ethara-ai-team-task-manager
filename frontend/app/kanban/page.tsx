@@ -137,14 +137,14 @@ export default function KanbanPage() {
     <AppShell>
       <div className="mx-auto flex h-full max-w-[1600px] flex-col px-6 py-8">
         {/* Header */}
-        <div className="mb-10 flex items-center justify-between">
+        <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:mb-10 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight text-[#343a40]">Board</h1>
-            <p className="mt-1 text-sm font-medium text-[#6c757d]">Manage workflows across your projects.</p>
+            <h1 className="text-2xl font-extrabold tracking-tight text-[#343a40] sm:text-3xl">Board</h1>
+            <p className="mt-1 text-xs font-medium text-[#6c757d] sm:text-sm">Manage workflows across your projects.</p>
           </div>
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="flex items-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer"
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-6 py-3 text-sm font-bold text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary/90 active:scale-95 cursor-pointer sm:w-auto"
           >
             <Plus size={18} />
             New Task
@@ -157,7 +157,7 @@ export default function KanbanPage() {
             {COLUMNS.map((col) => {
               const colTasks = tasksByStatus(col.id);
               return (
-                <div key={col.id} className="flex w-[360px] min-w-[360px] flex-col rounded-3xl bg-[#f8f9fa] border border-[#eff2f7]">
+                <div key={col.id} className="flex w-[85vw] min-w-[85vw] max-w-[360px] sm:w-[360px] sm:min-w-[360px] flex-col rounded-3xl bg-[#f8f9fa] border border-[#eff2f7]">
                   {/* Column Header */}
                   <div className="flex items-center justify-between px-5 py-4">
                     <div className="flex items-center gap-3">
