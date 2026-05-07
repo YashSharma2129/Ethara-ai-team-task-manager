@@ -188,7 +188,8 @@ export default function KanbanPage() {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`group relative rounded-2xl border border-[#eff2f7] bg-white p-5 shadow-sm transition-all ${
+                                onClick={() => router.push(`/tasks/${t.id}`)}
+                                className={`group relative rounded-2xl border border-[#eff2f7] bg-white p-5 shadow-sm transition-all cursor-pointer ${
                                   snapshot.isDragging ? "rotate-2 scale-105 shadow-2xl z-[100]" : "hover:shadow-md"
                                 }`}
                               >
@@ -214,7 +215,7 @@ export default function KanbanPage() {
                                 {/* Actions (Always visible on hover) */}
                                 <div className="absolute right-3 top-1/2 flex -translate-y-1/2 flex-col gap-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                                    <button 
-                                     onClick={() => router.push(`/tasks/${t.id}`)}
+                                     onClick={(e) => { e.stopPropagation(); router.push(`/tasks/${t.id}`); }}
                                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-primary transition-all"
                                      title="View Details"
                                    >
@@ -224,14 +225,14 @@ export default function KanbanPage() {
                                    {isAdmin || t.project?.adminId === user?.id ? (
                                      <>
                                        <button 
-                                         onClick={() => { setEditingTask(t); setIsDrawerOpen(true); }}
+                                         onClick={(e) => { e.stopPropagation(); setEditingTask(t); setIsDrawerOpen(true); }}
                                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:text-[#343a40] transition-all"
                                          title="Edit Task"
                                        >
                                          <Edit size={14} />
                                        </button>
                                        <button 
-                                         onClick={() => { setTaskToDelete(t.id); setIsConfirmOpen(true); }}
+                                         onClick={(e) => { e.stopPropagation(); setTaskToDelete(t.id); setIsConfirmOpen(true); }}
                                          className="flex h-8 w-8 items-center justify-center rounded-xl bg-white border border-[#eff2f7] text-[#adb5bd] shadow-sm hover:bg-danger/5 hover:text-danger transition-all"
                                          title="Delete Task"
                                        >

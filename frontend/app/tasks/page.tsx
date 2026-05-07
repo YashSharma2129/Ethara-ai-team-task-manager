@@ -446,7 +446,8 @@ export default function TasksPage() {
                   return (
                     <tr
                       key={task.id}
-                      className={`group transition-colors ${
+                      onClick={() => router.push(`/tasks/${task.id}`)}
+                      className={`group transition-colors cursor-pointer ${
                         isSelected ? "bg-primary/5" : "hover:bg-[#f8f9fa]"
                       }`}
                     >
@@ -462,10 +463,7 @@ export default function TasksPage() {
                       </td>
 
                       {/* Task name */}
-                      <td
-                        className="cursor-pointer px-4 py-3.5"
-                        onClick={() => router.push(`/tasks/${task.id}`)}
-                      >
+                      <td className="px-4 py-3.5">
                         <p className="max-w-[260px] truncate font-semibold text-[#343a40] transition-colors group-hover:text-primary">
                           {task.title}
                         </p>

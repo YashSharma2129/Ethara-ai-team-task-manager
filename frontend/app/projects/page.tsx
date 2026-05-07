@@ -76,7 +76,10 @@ function ProjectCard({
   const completion = tasks > 0 ? Math.round((done / tasks) * 100) : 0;
 
   return (
-    <div className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#eff2f7] bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg">
+    <div 
+      onClick={onClick}
+      className="group relative flex flex-col overflow-hidden rounded-2xl border border-[#eff2f7] bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer"
+    >
       {/* Color top strip */}
       <div className="h-1 w-full" style={{ background: color }} />
 
@@ -84,9 +87,8 @@ function ProjectCard({
         {/* Header */}
         <div className="mb-4 flex items-start justify-between">
           <div
-            className="flex h-10 w-10 flex-shrink-0 cursor-pointer items-center justify-center rounded-xl text-[13px] font-extrabold text-white shadow-sm transition-transform group-hover:scale-105"
+            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-[13px] font-extrabold text-white shadow-sm transition-transform group-hover:scale-105"
             style={{ background: color }}
-            onClick={onClick}
           >
             {getInitials(project.name)}
           </div>
@@ -128,7 +130,7 @@ function ProjectCard({
         </div>
 
         {/* Name & description */}
-        <div className="mb-4 flex-1 cursor-pointer" onClick={onClick}>
+        <div className="mb-4 flex-1">
           <h3 className="text-[15px] font-extrabold text-[#343a40] transition-colors group-hover:text-primary line-clamp-1">
             {project.name}
           </h3>
