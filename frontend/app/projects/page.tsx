@@ -179,7 +179,7 @@ function ProjectCard({
           </div>
           <button
             onClick={onClick}
-            className="flex items-center gap-1 text-[11px] font-bold text-primary opacity-0 transition-all duration-200 group-hover:opacity-100 hover:underline"
+            className="flex items-center gap-1 text-[11px] font-bold text-primary transition-all duration-200 hover:underline"
           >
             Open <ArrowRight size={11} />
           </button>
