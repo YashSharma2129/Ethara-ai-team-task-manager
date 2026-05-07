@@ -99,12 +99,12 @@ function BulkBar({
   const [statusOpen, setStatusOpen] = useState(false);
 
   return (
-    <div className="mb-4 flex items-center gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-2.5 animate-in slide-in-from-top-2 duration-200">
-      <div className="flex items-center gap-2">
-        <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-extrabold text-white">
+    <div className="mb-4 flex flex-wrap items-center gap-2 sm:gap-3 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5 sm:px-4 animate-in slide-in-from-top-2 duration-200">
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-extrabold text-white">
           {count}
         </div>
-        <span className="text-[13px] font-semibold text-primary">
+        <span className="text-[12px] sm:text-[13px] font-semibold text-primary">
           task{count !== 1 ? "s" : ""} selected
         </span>
       </div>
@@ -115,7 +115,7 @@ function BulkBar({
       <div className="relative">
         <button
           onClick={() => setStatusOpen((o) => !o)}
-          className="flex items-center gap-1.5 rounded-lg border border-[#eff2f7] bg-white px-3 py-1.5 text-[12px] font-bold text-[#343a40] transition-all hover:border-primary/30 hover:text-primary"
+          className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-[#eff2f7] bg-white px-3 py-1.5 text-[12px] font-bold text-[#343a40] transition-all hover:border-primary/30 hover:text-primary"
         >
           Change Status
           <ChevronDown size={12} />
@@ -146,7 +146,7 @@ function BulkBar({
       <button
         onClick={onBulkDelete}
         disabled={isLoading}
-        className="flex items-center gap-1.5 rounded-lg border border-danger/20 bg-danger/5 px-3 py-1.5 text-[12px] font-bold text-danger transition-all hover:bg-danger hover:text-white disabled:opacity-60"
+        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-danger/20 bg-danger/5 px-3 py-1.5 text-[12px] font-bold text-danger transition-all hover:bg-danger hover:text-white disabled:opacity-60"
       >
         {isLoading ? (
           <Loader2 size={12} className="animate-spin" />
