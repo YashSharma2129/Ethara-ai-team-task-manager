@@ -93,14 +93,20 @@ export function Header({ onToggleSidebar, onOpenMobile, sidebarCollapsed }: Head
         </button>
 
         {/* Notifications */}
-        <button
-          type="button"
-          className="relative h-10 w-10 cursor-pointer items-center justify-center rounded-full text-[#74788d] transition-all hover:bg-[#f8f8fb] hover:text-primary"
-          aria-label="Notifications"
-        >
-          <Bell size={18} />
-          <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-danger border border-white"></span>
-        </button>
+        <div className="relative group/tooltip flex items-center">
+          <button
+            type="button"
+            className="relative h-10 w-10 cursor-pointer flex items-center justify-center rounded-full text-[#74788d] transition-all hover:bg-[#f8f8fb] hover:text-primary"
+            aria-label="Notifications"
+          >
+            <Bell size={18} />
+            <span className="absolute top-2.5 right-2.5 h-1.5 w-1.5 rounded-full bg-danger border border-white"></span>
+          </button>
+          <span className="pointer-events-none absolute top-full left-1/2 mt-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-[#0f2440] px-3 py-1.5 text-[10px] font-bold text-white opacity-0 transition-all group-hover/tooltip:opacity-100 z-50 shadow-xl">
+            Coming soon
+            <span className="absolute left-1/2 bottom-full -translate-x-1/2 border-[4px] border-transparent border-b-[#0f2440]" />
+          </span>
+        </div>
 
         {/* Profile Avatar & Name */}
         <div ref={menuRef} className="relative ml-2">
