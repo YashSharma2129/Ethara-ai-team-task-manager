@@ -120,9 +120,9 @@ function ProjectCard({
                 >
                   <Trash2 size={14} />
                 </button>
-                <span className="pointer-events-none absolute bottom-full right-0 mb-2 translate-y-1 whitespace-nowrap rounded-lg bg-[#0f2440] px-3 py-1.5 text-[10px] font-bold text-white opacity-0 transition-all group-hover/tooltip:translate-y-0 group-hover/tooltip:opacity-100 z-50 shadow-xl">
+                <span className="pointer-events-none absolute right-full top-1/2 mr-2 -translate-y-1/2 whitespace-nowrap rounded-lg bg-[#0f2440] px-3 py-1.5 text-[10px] font-bold text-white opacity-0 transition-all group-hover/tooltip:opacity-100 z-50 shadow-xl">
                    Only project admins can manage
-                   <span className="absolute left-1/2 top-full -translate-x-1/2 border-[4px] border-transparent border-t-[#0f2440]" />
+                   <span className="absolute left-full top-1/2 -translate-y-1/2 border-[4px] border-transparent border-l-[#0f2440]" />
                 </span>
               </div>
             )}
