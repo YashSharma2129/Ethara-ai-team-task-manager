@@ -161,13 +161,13 @@ export default function ProfilePage() {
         </div>
 
         {/* Tabs */}
-        <div className="mb-10 flex gap-1 rounded-2xl bg-[#f1f3f5]/50 p-1">
+        <div className="mb-10 flex overflow-x-auto no-scrollbar gap-1 rounded-2xl bg-[#f1f3f5]/50 p-1">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setActiveTab(id)}
               className={`
-                flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-[12px] font-extrabold uppercase tracking-widest transition-all cursor-pointer
+                flex flex-shrink-0 sm:flex-1 items-center justify-center gap-2 rounded-xl px-4 sm:px-0 py-3 text-[12px] font-extrabold uppercase tracking-widest transition-all cursor-pointer
                 ${
                   activeTab === id
                     ? "bg-white text-primary shadow-sm"
@@ -175,8 +175,8 @@ export default function ProfilePage() {
                 }
               `}
             >
-              <Icon size={14} />
-              {label}
+              <Icon size={14} className="flex-shrink-0" />
+              <span className="whitespace-nowrap">{label}</span>
             </button>
           ))}
         </div>
