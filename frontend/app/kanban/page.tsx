@@ -157,7 +157,7 @@ export default function KanbanPage() {
             {COLUMNS.map((col) => {
               const colTasks = tasksByStatus(col.id);
               return (
-                <div key={col.id} className="flex w-[85vw] min-w-[85vw] max-w-[360px] sm:w-[360px] sm:min-w-[360px] flex-col rounded-3xl bg-[#f8f9fa] border border-[#eff2f7]">
+                <div key={col.id} className="flex w-[85vw] min-w-[85vw] sm:w-auto sm:min-w-[280px] sm:max-w-none sm:flex-1 flex-col rounded-3xl bg-[#f8f9fa] border border-[#eff2f7]">
                   {/* Column Header */}
                   <div className="flex items-center justify-between px-5 py-4">
                     <div className="flex items-center gap-3">
