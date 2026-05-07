@@ -257,7 +257,7 @@ export default function ProfilePage() {
                   </button>
                 </div>
                 <textarea
-                  className={`w-full min-h-[200px] resize-none text-sm leading-relaxed text-[#495057] outline-none placeholder:text-[#adb5bd] transition-all ${isEditingBio ? 'bg-white border border-primary/30 ring-4 ring-primary/5 rounded-lg p-3' : 'bg-transparent border-none p-0'}`}
+                  className={`w-full min-h-[120px] resize-none text-sm leading-relaxed text-[#495057] outline-none placeholder:text-[#adb5bd] transition-all ${isEditingBio ? 'bg-white border border-primary/30 ring-4 ring-primary/5 rounded-lg p-3' : 'bg-transparent border-none p-0'}`}
                   value={formData.bio}
                   onChange={(e) => set("bio", e.target.value)}
                   placeholder="Tell us about yourself..."
@@ -265,20 +265,20 @@ export default function ProfilePage() {
                 />
                 
                 {isEditingBio && (
-                  <div className="mt-3 flex justify-end gap-2">
+                  <div className="mt-3 flex justify-end gap-3">
                     <button 
                       onClick={() => { setIsEditingBio(false); setFormData(prev => ({ ...prev, bio: user?.bio || "" })); }}
-                      className="px-3 py-1.5 text-xs font-bold text-[#6c757d] hover:text-[#343a40] transition-colors"
+                      className="rounded-md bg-[#e76f51] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#e76f51]/90"
                     >
                       Cancel
                     </button>
                     <button 
                       onClick={handleSave}
                       disabled={updateProfile.isPending}
-                      className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-bold text-white transition-all hover:bg-primary/90 disabled:opacity-60"
+                      className="flex items-center gap-2 rounded-md bg-[#1d3bb3] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#1d3bb3]/90 disabled:opacity-60"
                     >
-                      {updateProfile.isPending && <Loader2 size={12} className="animate-spin" />}
-                      Save
+                      {updateProfile.isPending && <Loader2 size={14} className="animate-spin" />}
+                      Save Changes
                     </button>
                   </div>
                 )}
@@ -303,10 +303,6 @@ export default function ProfilePage() {
                   <h3 className="text-base font-bold text-[#343a40]">
                     Profile Information
                   </h3>
-                  <button className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary/90">
-                    <Upload size={14} />
-                    Import LinkedIn PDF/Resume
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5">
