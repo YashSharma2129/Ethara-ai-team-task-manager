@@ -68,7 +68,7 @@ function Field({
 }
 
 const inputCls =
-  "w-full rounded-lg border border-[#dee2e6] bg-white px-3 py-2 text-sm text-[#495057] outline-none transition-all placeholder:text-[#adb5bd] focus:border-primary focus:ring-2 focus:ring-primary/10";
+  "w-full rounded-lg border border-[#dee2e6] bg-white px-3 py-2 text-sm text-[#495057] outline-none transition-all placeholder:text-[#adb5bd] focus:border-primary focus:ring-2 focus:ring-primary/10 disabled:opacity-70 disabled:bg-[#f8f9fa] disabled:cursor-not-allowed";
 
 // ─── Loading skeleton ─────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ export default function ProfilePage() {
   });
 
   const [isDirty, setIsDirty] = useState(false);
-  const [isEditingBio, setIsEditingBio] = useState(false);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -150,7 +150,7 @@ export default function ProfilePage() {
         onSuccess: () => {
           toast.success("Profile updated successfully");
           setIsDirty(false);
-          setIsEditingBio(false);
+          setIsEditingProfile(false);
         },
         onError: () => toast.error("Failed to update profile"),
       }
@@ -239,49 +239,35 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <h2 className="text-lg font-bold text-[#343a40]">User Profile</h2>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-lg font-bold text-[#343a40]">User Profile</h2>
+              {!isEditingProfile && (
+                <button 
+                  onClick={() => setIsEditingProfile(true)} 
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-[#dee2e6] text-[#6c757d] shadow-sm transition-all hover:border-primary hover:text-primary"
+                  title="Edit Profile"
+                >
+                  <Edit3 size={18} />
+                </button>
+              )}
+            </div>
 
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               {/* Left: Bio */}
               <div className="rounded-lg border border-[#dee2e6] bg-white p-6">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3">
                   <h3 className="text-sm font-bold text-[#343a40]">
                     Bio/ About <span className="text-danger">*</span>
                   </h3>
-                  <button onClick={() => setIsEditingBio(true)} disabled={isEditingBio}>
-                    <Edit3
-                      size={14}
-                      className={`cursor-pointer transition-colors ${isEditingBio ? 'text-primary' : 'text-[#adb5bd] hover:text-primary'}`}
-                    />
-                  </button>
                 </div>
                 <textarea
-                  className={`w-full min-h-[120px] resize-none text-sm leading-relaxed text-[#495057] outline-none placeholder:text-[#adb5bd] transition-all ${isEditingBio ? 'bg-white border border-primary/30 ring-4 ring-primary/5 rounded-lg p-3' : 'bg-transparent border-none p-0'}`}
+                  className={`w-full min-h-[120px] resize-none text-sm leading-relaxed text-[#495057] outline-none placeholder:text-[#adb5bd] transition-all ${isEditingProfile ? 'bg-white border border-primary/30 ring-4 ring-primary/5 rounded-lg p-3' : 'bg-transparent border-none p-0'}`}
                   value={formData.bio}
                   onChange={(e) => set("bio", e.target.value)}
                   placeholder="Tell us about yourself..."
-                  readOnly={!isEditingBio}
+                  readOnly={!isEditingProfile}
                 />
-                
-                {isEditingBio && (
-                  <div className="mt-3 flex justify-end gap-3">
-                    <button 
-                      onClick={() => { setIsEditingBio(false); setFormData(prev => ({ ...prev, bio: user?.bio || "" })); }}
-                      className="rounded-md bg-[#e76f51] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#e76f51]/90"
-                    >
-                      Cancel
-                    </button>
-                    <button 
-                      onClick={handleSave}
-                      disabled={updateProfile.isPending}
-                      className="flex items-center gap-2 rounded-md bg-[#1d3bb3] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#1d3bb3]/90 disabled:opacity-60"
-                    >
-                      {updateProfile.isPending && <Loader2 size={14} className="animate-spin" />}
-                      Save Changes
-                    </button>
-                  </div>
-                )}
 
                 <div className="mt-6 border-t border-[#f1f3f5] pt-6">
                   <label className="mb-2 block text-xs font-bold uppercase tracking-wider text-[#adb5bd]">
@@ -293,6 +279,7 @@ export default function ProfilePage() {
                     value={formData.linkedin}
                     onChange={(e) => set("linkedin", e.target.value)}
                     placeholder="https://www.linkedin.com/in/..."
+                    disabled={!isEditingProfile}
                   />
                 </div>
               </div>
@@ -311,6 +298,7 @@ export default function ProfilePage() {
                       className={inputCls}
                       value={formData.firstName}
                       onChange={(e) => set("firstName", e.target.value)}
+                      disabled={!isEditingProfile}
                     />
                   </Field>
 
@@ -319,6 +307,7 @@ export default function ProfilePage() {
                       className={inputCls}
                       value={formData.lastName}
                       onChange={(e) => set("lastName", e.target.value)}
+                      disabled={!isEditingProfile}
                     />
                   </Field>
 
@@ -328,6 +317,7 @@ export default function ProfilePage() {
                         className={`${inputCls} appearance-none pr-8`}
                         value={formData.department}
                         onChange={(e) => set("department", e.target.value)}
+                        disabled={!isEditingProfile}
                       >
                         {DEPARTMENTS.map((d) => (
                           <option key={d}>{d}</option>
@@ -346,6 +336,7 @@ export default function ProfilePage() {
                       value={formData.title}
                       onChange={(e) => set("title", e.target.value)}
                       placeholder="e.g., Software Engineer"
+                      disabled={!isEditingProfile}
                     />
                   </Field>
 
@@ -357,6 +348,7 @@ export default function ProfilePage() {
                       onChange={(e) =>
                         set("yearsOfExperience", e.target.value)
                       }
+                      disabled={!isEditingProfile}
                     />
                   </Field>
 
@@ -366,6 +358,7 @@ export default function ProfilePage() {
                         className={`${inputCls} appearance-none pr-8`}
                         value={formData.gender}
                         onChange={(e) => set("gender", e.target.value)}
+                        disabled={!isEditingProfile}
                       >
                         <option>Male</option>
                         <option>Female</option>
@@ -385,23 +378,30 @@ export default function ProfilePage() {
                       value={formData.location}
                       onChange={(e) => set("location", e.target.value)}
                       placeholder="City, Country"
+                      disabled={!isEditingProfile}
                     />
                   </Field>
                 </div>
 
-                {/* Save button */}
-                <div className="mt-8 flex justify-end border-t border-[#f1f3f5] pt-6">
-                  <button
-                    onClick={handleSave}
-                    disabled={updateProfile.isPending || !isDirty}
-                    className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-primary/90 active:scale-95 disabled:opacity-60"
-                  >
-                    {updateProfile.isPending && (
-                      <Loader2 size={16} className="animate-spin" />
-                    )}
-                    {updateProfile.isPending ? "Saving..." : "Save Changes"}
-                  </button>
-                </div>
+                {/* Edit Actions */}
+                {isEditingProfile && (
+                  <div className="mt-8 flex justify-end gap-3 border-t border-[#f1f3f5] pt-6">
+                    <button 
+                      onClick={() => { setIsEditingProfile(false); setFormData(prev => ({ ...prev, bio: user?.bio || "" })); }}
+                      className="rounded-md bg-[#e76f51] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#e76f51]/90"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={handleSave}
+                      disabled={updateProfile.isPending}
+                      className="flex items-center gap-2 rounded-md bg-[#1d3bb3] px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-[#1d3bb3]/90 disabled:opacity-60"
+                    >
+                      {updateProfile.isPending && <Loader2 size={14} className="animate-spin" />}
+                      Save Changes
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
